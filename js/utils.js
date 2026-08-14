@@ -78,6 +78,13 @@ export function initials(fullName) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+// Prefer the initials set on the team_members row (short, deliberate — e.g.
+// a single letter) over auto-computing them from the full name.
+export function memberInitials(member) {
+  if (!member) return '?';
+  return (member.initials || initials(member.full_name)).toUpperCase();
+}
+
 export function statusLabel(status) {
   return { a_faire: 'To do', en_cours: 'In progress', fait: 'Done' }[status] || status;
 }

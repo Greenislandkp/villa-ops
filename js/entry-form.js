@@ -13,7 +13,7 @@ import {
   deleteEntry,
 } from './data.js';
 import { supabase, ENTRY_PHOTOS_BUCKET } from './supabase-client.js';
-import { escapeHtml, todayIso, isReservationCategory, isCleaningCategory, normalizeLabel, showToast, getSignedPhotoUrl } from './utils.js';
+import { escapeHtml, todayIso, isReservationCategory, isCleaningCategory, normalizeLabel, showToast, getSignedPhotoUrl, memberInitials } from './utils.js';
 
 const CATEGORY_COLORS = ['#3E7C59', '#D98E04', '#B5502A', '#8B9A93', '#C99A3D', '#5B7FA6', '#8B5FBF'];
 const CHECKIN_CATEGORY = { label: 'Check-in', color: '#3AA6A0' };
@@ -90,7 +90,7 @@ function categoryChipsHtml() {
 
 function assigneeOptionsHtml(selectedId) {
   const opts = state.teamMembers
-    .map((m) => `<option value="${m.id}"${m.id === selectedId ? ' selected' : ''}>${escapeHtml(m.full_name)}</option>`)
+    .map((m) => `<option value="${m.id}"${m.id === selectedId ? ' selected' : ''}>${escapeHtml(memberInitials(m))}</option>`)
     .join('');
   return `<option value=""${selectedId ? '' : ' selected'}>No one in particular</option>${opts}`;
 }

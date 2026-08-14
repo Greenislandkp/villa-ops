@@ -1,7 +1,7 @@
 import { state, isAdmin } from './store.js';
 import { fetchEntryById, fetchReservationsForEntries, updateEntryStatus, deleteEntry } from './data.js';
 import { supabase, ENTRY_PHOTOS_BUCKET } from './supabase-client.js';
-import { escapeHtml, formatEntryTimestamp, formatDueDate, formatDateShort, statusLabel, hexOrFallback, getSignedPhotoUrl, isReservationCategory, showToast } from './utils.js';
+import { escapeHtml, formatEntryTimestamp, formatDueDate, formatDateShort, statusLabel, hexOrFallback, getSignedPhotoUrl, isReservationCategory, memberInitials, showToast } from './utils.js';
 import { openEntryForm } from './entry-form.js';
 
 function closeSheet() {
@@ -64,7 +64,7 @@ function renderDetail(entry, reservation, photoUrl, onChanged) {
         </div>
         ${isReservation ? '' : `<div class="entry-meta" style="font-size:13px;"><span>Due ${escapeHtml(formatDueDate(entry.event_date))}</span></div>`}
         <div class="entry-meta" style="font-size:13px;">
-          <span class="avatar">${escapeHtml((author && author.full_name || '?').slice(0, 2).toUpperCase())}</span>
+          <span class="avatar">${escapeHtml(memberInitials(author))}</span>
           <span>Added by ${escapeHtml((author && author.full_name) || 'Unknown')}</span>
         </div>
         ${assigned ? `<div class="entry-meta" style="font-size:13px;">→ Assigned to ${escapeHtml(assigned.full_name)}</div>` : ''}
