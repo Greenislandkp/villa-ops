@@ -17,8 +17,8 @@ export async function signOut() {
   await supabase.auth.signOut();
 }
 
-// Branche le formulaire de connexion. Échoue proprement (message clair, pas
-// de blocage) tant qu'aucun compte n'a été créé côté Supabase par l'admin.
+// Wires the login form. Fails cleanly (clear message, no crash) as long as
+// no account has been created on the Supabase side by the admin.
 export function wireLoginForm() {
   const form = document.getElementById('login-form');
   const errorBox = document.getElementById('login-error');
@@ -33,28 +33,28 @@ export function wireLoginForm() {
     const password = document.getElementById('login-password').value;
 
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Connexion…';
+    submitBtn.textContent = 'Signing in…';
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     submitBtn.disabled = false;
-    submitBtn.textContent = 'Se connecter';
+    submitBtn.textContent = 'Sign in';
 
     if (error) {
       errorBox.textContent = translateAuthError(error);
       errorBox.classList.add('show');
     }
-    // succès : onAuthStateChange (branché dans app.js) prend le relais.
+    // success: onAuthStateChange (wired in app.js) takes over.
   });
 }
 
 function translateAuthError(error) {
   const msg = (error && error.message) || '';
   if (/invalid login credentials/i.test(msg)) {
-    return "Identifiants incorrects, ou compte pas encore créé pour cette adresse. Contacte l'administrateur de Villa Ops.";
+    return "Incorrect credentials, or no account created yet for this address. Contact the Villa Ops administrator.";
   }
   if (/email not confirmed/i.test(msg)) {
-    return "Ce compte n'a pas encore été confirmé. Contacte l'administrateur de Villa Ops.";
+    return "This account hasn't been confirmed yet. Contact the Villa Ops administrator.";
   }
-  return "Connexion impossible pour le moment. Réessaie dans un instant.";
+  return "Couldn't sign in right now. Try again in a moment.";
 }

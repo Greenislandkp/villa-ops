@@ -1,32 +1,37 @@
 import { fetchTaskEntries } from './data.js';
-import { state, entryContext } from './store.js';
+import { state, entryContext, getReservationCategory } from './store.js';
 import { entryCardHtml } from './entry-card.js';
 import { escapeHtml } from './utils.js';
 
+function reservationCategoryId() {
+  const cat = getReservationCategory();
+  return cat ? cat.id : null;
+}
+
 export async function renderTasks() {
   const list = document.getElementById('tasks-list');
-  list.innerHTML = '<div class="loading-row">Chargement…</div>';
+  list.innerHTML = '<div class="loading-row">Loading…</div>';
   try {
-    const entries = await fetchTaskEntries({ villaId: state.selectedVillaId });
+    const entries = await fetchTaskEntries({ villaId: state.selectedVillaId, excludeCategoryId: reservationCategoryId() });
     updateTasksBadge(entries.length);
     if (!entries.length) {
-      list.innerHTML = `<div class="empty-state"><b>Aucune tâche en cours</b>Tout est à jour pour cette sélection.</div>`;
+      list.innerHTML = `<div class="empty-state"><b>No tasks in progress</b>Everything is up to date for this selection.</div>`;
       return;
     }
     const showVilla = state.selectedVillaId === 'all';
     const ctx = entryContext(showVilla);
     list.innerHTML = entries.map((e) => entryCardHtml(e, ctx)).join('');
   } catch (err) {
-    list.innerHTML = `<div class="empty-state"><b>Erreur de chargement</b>${escapeHtml(err.message || 'Réessaie dans un instant.')}</div>`;
+    list.innerHTML = `<div class="empty-state"><b>Loading error</b>${escapeHtml(err.message || 'Try again in a moment.')}</div>`;
   }
 }
 
 export async function updateTasksBadgeCount() {
   try {
-    const entries = await fetchTaskEntries({ villaId: state.selectedVillaId });
+    const entries = await fetchTaskEntries({ villaId: state.selectedVillaId, excludeCategoryId: reservationCategoryId() });
     updateTasksBadge(entries.length);
   } catch (_) {
-    /* silencieux : le badge n'est qu'indicatif */
+    /* silent: the badge is only indicative */
   }
 }
 

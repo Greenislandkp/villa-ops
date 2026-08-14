@@ -1,4 +1,4 @@
-import { escapeHtml, formatEntryTimestamp, initials, statusLabel, hexOrFallback } from './utils.js';
+import { escapeHtml, formatEntryTimestamp, initials, statusLabel, hexOrFallback, isReservationCategory } from './utils.js';
 
 // ctx: { categoriesById, teamMembersById, villasById, showVilla }
 export function entryCardHtml(entry, ctx) {
@@ -7,10 +7,11 @@ export function entryCardHtml(entry, ctx) {
   const author = ctx.teamMembersById.get(entry.author_id);
   const assigned = entry.assigned_to_id ? ctx.teamMembersById.get(entry.assigned_to_id) : null;
   const villa = ctx.villasById.get(entry.villa_id);
-  const label = cat ? cat.label : 'Autre';
+  const label = cat ? cat.label : 'Other';
+  const isReservation = isReservationCategory(cat);
 
   const metaParts = [];
-  metaParts.push(`<span class="avatar">${escapeHtml(initials(author && author.full_name))}</span>${escapeHtml((author && author.full_name) || 'Inconnu')}`);
+  metaParts.push(`<span class="avatar">${escapeHtml(initials(author && author.full_name))}</span>${escapeHtml((author && author.full_name) || 'Unknown')}`);
   if (ctx.showVilla && villa) metaParts.push(escapeHtml(villa.name));
   if (entry.check_in_time) metaParts.push(`<span style="font-family:var(--font-mono)">${escapeHtml(entry.check_in_time.slice(0, 5))}</span>`);
   if (assigned) metaParts.push(`→ ${escapeHtml(assigned.full_name)}`);
@@ -30,7 +31,7 @@ export function entryCardHtml(entry, ctx) {
       <div class="entry-title">${escapeHtml(entry.title)}</div>
       <div class="entry-meta">
         ${metaHtml}
-        <span class="status-badge ${entry.status}">${statusLabel(entry.status)}</span>
+        ${isReservation ? '' : `<span class="status-badge ${entry.status}">${statusLabel(entry.status)}</span>`}
         ${entry.photo_url ? '<span class="photo-flag">📷 photo</span>' : ''}
       </div>
     </div>

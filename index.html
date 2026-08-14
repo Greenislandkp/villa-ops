@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Villa Ops</title>
-<meta name="description" content="Journal de bord et calendrier pour l'équipe Villa Ops.">
+<meta name="description" content="Log book and calendar for the Villa Ops team.">
 
 <!-- PWA -->
 <link rel="manifest" href="manifest.json">
@@ -37,8 +37,8 @@
   </div>
   <div class="login-head">
     <p class="eyebrow">Villa Ops</p>
-    <h1>Journal de bord</h1>
-    <p>Connexion réservée à l'équipe</p>
+    <h1>Log book</h1>
+    <p>Sign-in reserved for the team</p>
   </div>
   <form id="login-form" class="login-form" autocomplete="on">
     <div class="form-error" id="login-error"></div>
@@ -47,12 +47,12 @@
       <input type="email" id="login-email" required autocomplete="username" inputmode="email">
     </div>
     <div class="field">
-      <label for="login-password">Mot de passe</label>
+      <label for="login-password">Password</label>
       <input type="password" id="login-password" required autocomplete="current-password">
     </div>
-    <button type="submit" id="login-submit" class="btn-primary">Se connecter</button>
+    <button type="submit" id="login-submit" class="btn-primary">Sign in</button>
   </form>
-  <p class="login-foot">Accès restreint à l'équipe.<br>Pas de compte&nbsp;? Contacte l'administrateur de Villa Ops.</p>
+  <p class="login-foot">Access restricted to the team.<br>No account&nbsp;? Contact the Villa Ops administrator.</p>
 </div>
 
 <!-- ===== APP SHELL ===== -->
@@ -63,7 +63,7 @@
         <p class="eyebrow" id="header-eyebrow">Villa Ops</p>
         <h1 id="header-title">Journal</h1>
       </div>
-      <button id="logout-btn" class="logout-btn" type="button">Déconnexion</button>
+      <button id="logout-btn" class="logout-btn" type="button">Sign out</button>
     </div>
     <div class="villa-switch" id="villa-switch"></div>
   </header>
@@ -74,16 +74,16 @@
     <!-- JOURNAL -->
     <div id="view-journal" class="view">
       <div class="cat-filter" id="journal-cat-filter"></div>
-      <div id="journal-list"><div class="loading-row">Chargement…</div></div>
+      <div id="journal-list"><div class="loading-row">Loading…</div></div>
     </div>
 
     <!-- CALENDAR -->
     <div id="view-calendar" class="view hidden">
       <div class="cal-card">
         <div class="cal-month">
-          <button class="cal-nav" id="cal-prev" type="button" aria-label="Mois précédent">‹</button>
+          <button class="cal-nav" id="cal-prev" type="button" aria-label="Previous month">‹</button>
           <span id="cal-month-label">—</span>
-          <button class="cal-nav" id="cal-next" type="button" aria-label="Mois suivant">›</button>
+          <button class="cal-nav" id="cal-next" type="button" aria-label="Next month">›</button>
         </div>
         <div class="cal-grid" id="cal-grid"></div>
         <div class="day-detail" id="cal-day-detail"></div>
@@ -92,21 +92,21 @@
 
     <!-- TASKS -->
     <div id="view-tasks" class="view hidden">
-      <div id="tasks-list"><div class="loading-row">Chargement…</div></div>
+      <div id="tasks-list"><div class="loading-row">Loading…</div></div>
     </div>
 
     <!-- VILLAS -->
     <div id="view-villas" class="view hidden">
-      <div id="villas-list"><div class="loading-row">Chargement…</div></div>
+      <div id="villas-list"><div class="loading-row">Loading…</div></div>
     </div>
   </div>
 
-  <button class="fab" id="fab-add" type="button" aria-label="Nouvelle entrée">+</button>
+  <button class="fab" id="fab-add" type="button" aria-label="New entry">+</button>
 
   <nav class="bottomnav">
     <button class="nav-item active" data-view="journal" type="button"><div class="nav-dot"></div>Journal</button>
-    <button class="nav-item" data-view="calendar" type="button"><div class="nav-dot"></div>Calendrier</button>
-    <button class="nav-item" data-view="tasks" type="button"><div class="nav-dot"></div>Tâches<span class="nav-badge" id="tasks-badge"></span></button>
+    <button class="nav-item" data-view="calendar" type="button"><div class="nav-dot"></div>Calendar</button>
+    <button class="nav-item" data-view="tasks" type="button"><div class="nav-dot"></div>Tasks<span class="nav-badge" id="tasks-badge"></span></button>
     <button class="nav-item" data-view="villas" type="button"><div class="nav-dot"></div>Villas</button>
   </nav>
 </div>

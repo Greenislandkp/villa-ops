@@ -1,12 +1,13 @@
-import { fetchEntriesForMonth } from './data.js';
-import { state } from './store.js';
+import { fetchEntriesForMonth, fetchReservationEntriesNear, fetchReservationsForEntries } from './data.js';
+import { state, getReservationCategory } from './store.js';
 import { escapeHtml, formatMonthLabel, isoDate, formatDateLong, hexOrFallback } from './utils.js';
 
 const today = new Date();
 let viewYear = today.getFullYear();
 let viewMonth = today.getMonth(); // 0-indexed
 let selectedDate = isoDate(today);
-let monthEntries = [];
+let monthEntries = []; // non-reservation entries, single-day
+let staySpans = []; // reservation stays: { entry, reservation, arrival, departure }
 let wired = false;
 
 function wireNav() {
@@ -39,19 +40,57 @@ function entriesByDate() {
   return map;
 }
 
+// dateIso -> array of active stay spans that day
+function spansByDate(startIso, endIso) {
+  const map = new Map();
+  staySpans.forEach((span) => {
+    const from = span.arrival < startIso ? startIso : span.arrival;
+    const to = span.departure > endIso ? endIso : span.departure;
+    for (let d = new Date(from + 'T00:00:00'); isoDate(d) <= to; d.setDate(d.getDate() + 1)) {
+      const dIso = isoDate(d);
+      if (!map.has(dIso)) map.set(dIso, []);
+      map.get(dIso).push(span);
+    }
+  });
+  return map;
+}
+
+async function loadStaySpans(monthStart, monthEnd) {
+  const reservationCat = getReservationCategory();
+  if (!reservationCat) return [];
+  const resEntries = await fetchReservationEntriesNear({
+    villaId: state.selectedVillaId,
+    categoryId: reservationCat.id,
+    rangeStart: monthStart,
+    rangeEnd: monthEnd,
+  });
+  if (!resEntries.length) return [];
+  const resMap = await fetchReservationsForEntries(resEntries.map((e) => e.id));
+  const spans = [];
+  resEntries.forEach((entry) => {
+    const reservation = resMap.get(entry.id) || null;
+    const departure = (reservation && reservation.check_out_date) || entry.event_date;
+    if (departure < monthStart) return; // stay entirely before the visible month
+    spans.push({ entry, reservation, arrival: entry.event_date, departure, color: hexOrFallback(reservationCat.color) });
+  });
+  return spans;
+}
+
 function renderGrid() {
   const grid = document.getElementById('cal-grid');
   document.getElementById('cal-month-label').textContent = formatMonthLabel(viewYear, viewMonth);
 
+  const { startIso, endIso } = monthBounds(viewYear, viewMonth);
   const byDate = entriesByDate();
+  const bySpanDate = spansByDate(startIso, endIso);
   const firstOfMonth = new Date(viewYear, viewMonth, 1);
-  // Lundi = 0 ... Dimanche = 6
+  // Monday = 0 ... Sunday = 6
   const leadingBlank = (firstOfMonth.getDay() + 6) % 7;
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const prevMonthDays = new Date(viewYear, viewMonth, 0).getDate();
 
   const cells = [];
-  const dowLabels = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+  const dowLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
   dowLabels.forEach((d) => cells.push(`<div class="cal-dow">${d}</div>`));
 
   for (let i = leadingBlank; i > 0; i--) {
@@ -62,7 +101,13 @@ function renderGrid() {
   for (let day = 1; day <= daysInMonth; day++) {
     const dateIso = isoDate(new Date(viewYear, viewMonth, day));
     const dayEntries = byDate.get(dateIso) || [];
-    const colors = [...new Set(dayEntries.map((e) => hexOrFallback(state.categoriesById.get(e.category_id)?.color)))].slice(0, 4);
+    const daySpans = bySpanDate.get(dateIso) || [];
+    const colors = [
+      ...new Set([
+        ...daySpans.map((s) => s.color),
+        ...dayEntries.map((e) => hexOrFallback(state.categoriesById.get(e.category_id)?.color)),
+      ]),
+    ].slice(0, 4);
     const barsHtml = colors.length
       ? `<div class="bars">${colors.map((c) => `<div class="bar" style="background:${c}"></div>`).join('')}</div>`
       : '';
@@ -88,45 +133,72 @@ function renderGrid() {
   });
 }
 
+function stayLabel(span, dateIso) {
+  const name = (span.reservation && span.reservation.guest_name) || span.entry.title;
+  if (dateIso === span.arrival) return { verb: 'Check-in', time: (span.entry.check_in_time || '').slice(0, 5) };
+  if (dateIso === span.departure) return { verb: 'Check-out', time: (span.entry.check_out_time || '').slice(0, 5) };
+  return { verb: 'Staying', time: '' };
+}
+
 function renderDayDetail() {
   const box = document.getElementById('cal-day-detail');
+  const { startIso, endIso } = monthBounds(viewYear, viewMonth);
   const byDate = entriesByDate();
-  const dayEntries = (byDate.get(selectedDate) || []).slice().sort((a, b) => {
-    const ta = a.check_in_time || a.check_out_time || '99:99';
-    const tb = b.check_in_time || b.check_out_time || '99:99';
-    return ta.localeCompare(tb);
-  });
+  const bySpanDate = spansByDate(startIso, endIso);
+
+  const dayEntries = (byDate.get(selectedDate) || []).slice();
+  const daySpans = (bySpanDate.get(selectedDate) || []).slice();
 
   const isToday = selectedDate === isoDate(new Date());
-  const heading = isToday ? "Aujourd'hui" : formatDateLong(selectedDate);
+  const heading = isToday ? 'Today' : formatDateLong(selectedDate);
 
-  if (!dayEntries.length) {
-    box.innerHTML = `<h3>${escapeHtml(heading)}</h3><div class="empty-state" style="padding:20px 4px;">Rien de prévu ce jour-là.</div>`;
+  if (!dayEntries.length && !daySpans.length) {
+    box.innerHTML = `<h3>${escapeHtml(heading)}</h3><div class="empty-state" style="padding:20px 4px;">Nothing planned that day.</div>`;
     return;
   }
 
-  const slots = dayEntries.map((e) => {
-    const cat = state.categoriesById.get(e.category_id);
-    const villa = state.villasById.get(e.villa_id);
-    const time = (e.check_in_time || e.check_out_time || '').slice(0, 5) || '—';
-    const context = [villa ? villa.name : null, cat ? cat.label : null].filter(Boolean).join(' · ');
-    return `<div class="slot" data-entry-id="${e.id}" style="cursor:pointer;">
-      <span class="slot-time">${escapeHtml(time)}</span>
-      <div class="slot-text"><b>${escapeHtml(e.title)}</b><span>${escapeHtml(context)}</span></div>
+  const spanSlots = daySpans.map((span) => {
+    const villa = state.villasById.get(span.entry.villa_id);
+    const { verb, time } = stayLabel(span, selectedDate);
+    const name = (span.reservation && span.reservation.guest_name) || span.entry.title;
+    const context = [villa ? villa.name : null, verb].filter(Boolean).join(' · ');
+    return `<div class="slot" data-entry-id="${span.entry.id}" style="cursor:pointer;">
+      <span class="slot-time">${escapeHtml(time || '—')}</span>
+      <div class="slot-text"><b>${escapeHtml(name)}</b><span>${escapeHtml(context)}</span></div>
     </div>`;
   });
 
-  box.innerHTML = `<h3>${escapeHtml(heading)}</h3>${slots.join('')}`;
+  const entrySlots = dayEntries
+    .slice()
+    .sort((a, b) => (a.check_in_time || a.check_out_time || '99:99').localeCompare(b.check_in_time || b.check_out_time || '99:99'))
+    .map((e) => {
+      const cat = state.categoriesById.get(e.category_id);
+      const villa = state.villasById.get(e.villa_id);
+      const time = (e.check_in_time || e.check_out_time || '').slice(0, 5) || '—';
+      const context = [villa ? villa.name : null, cat ? cat.label : null].filter(Boolean).join(' · ');
+      return `<div class="slot" data-entry-id="${e.id}" style="cursor:pointer;">
+        <span class="slot-time">${escapeHtml(time)}</span>
+        <div class="slot-text"><b>${escapeHtml(e.title)}</b><span>${escapeHtml(context)}</span></div>
+      </div>`;
+    });
+
+  box.innerHTML = `<h3>${escapeHtml(heading)}</h3>${spanSlots.join('')}${entrySlots.join('')}`;
 }
 
 async function loadAndRender() {
   const grid = document.getElementById('cal-grid');
-  grid.innerHTML = '<div class="loading-row">Chargement…</div>';
+  grid.innerHTML = '<div class="loading-row">Loading…</div>';
   try {
     const { startIso, endIso } = monthBounds(viewYear, viewMonth);
-    monthEntries = await fetchEntriesForMonth({ villaId: state.selectedVillaId, startIso, endIso });
+    const reservationCat = getReservationCategory();
+    const [entries, spans] = await Promise.all([
+      fetchEntriesForMonth({ villaId: state.selectedVillaId, startIso, endIso, excludeCategoryId: reservationCat ? reservationCat.id : null }),
+      loadStaySpans(startIso, endIso),
+    ]);
+    monthEntries = entries;
+    staySpans = spans;
   } catch (err) {
-    grid.innerHTML = `<div class="empty-state"><b>Erreur de chargement</b>${escapeHtml(err.message || '')}</div>`;
+    grid.innerHTML = `<div class="empty-state"><b>Loading error</b>${escapeHtml(err.message || '')}</div>`;
     return;
   }
   renderGrid();

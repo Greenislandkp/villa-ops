@@ -1,16 +1,18 @@
-// État partagé minimal entre les vues (données de référence + sélection de
-// villa active). Chaque vue garde son état d'UI propre (filtre catégorie,
-// mois du calendrier...) localement dans son propre module.
+// Minimal shared state between views (reference data + active villa
+// selection). Each view keeps its own UI-only state (category filter,
+// calendar month...) locally in its own module.
+import { isReservationCategory } from './utils.js';
+
 export const state = {
   session: null,
-  currentTeamMember: null, // ligne team_members de l'utilisateur connecté (peut être null)
+  currentTeamMember: null, // team_members row for the logged-in user (can be null)
   villas: [],
   villasById: new Map(),
   categories: [],
   categoriesById: new Map(),
   teamMembers: [],
   teamMembersById: new Map(),
-  selectedVillaId: 'all', // 'all' ou uuid
+  selectedVillaId: 'all', // 'all' or uuid
   currentView: 'journal',
 };
 
@@ -36,4 +38,12 @@ export function entryContext(showVilla = true) {
     villasById: state.villasById,
     showVilla,
   };
+}
+
+export function getReservationCategory() {
+  return state.categories.find((c) => isReservationCategory(c)) || null;
+}
+
+export function isAdmin() {
+  return !!(state.currentTeamMember && state.currentTeamMember.full_access);
 }

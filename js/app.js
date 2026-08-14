@@ -13,8 +13,8 @@ import { escapeHtml, showToast } from './utils.js';
 
 const VIEW_TITLES = {
   journal: 'Journal',
-  calendar: 'Calendrier',
-  tasks: 'Tâches en cours',
+  calendar: 'Calendar',
+  tasks: 'Tasks in progress',
   villas: 'Villas',
 };
 
@@ -29,8 +29,8 @@ async function boot() {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Chaque requête est isolée : l'échec d'une table (ex. villas si les
-  // policies RLS bloquent) ne doit pas être confondu avec "profil absent".
+  // Each query is isolated: a failure on one table (e.g. villas if an RLS
+  // policy blocks it) must not be mistaken for "no profile".
   const [teamMemberResult, villasResult, categoriesResult, teamMembersResult] = await Promise.allSettled([
     loadCurrentTeamMember(user.id),
     loadAccessibleVillas(),
@@ -39,10 +39,10 @@ async function boot() {
   ]);
 
   const errors = [];
-  if (teamMemberResult.status === 'rejected') errors.push(`team_members : ${teamMemberResult.reason.message || teamMemberResult.reason}`);
-  if (villasResult.status === 'rejected') errors.push(`villas : ${villasResult.reason.message || villasResult.reason}`);
-  if (categoriesResult.status === 'rejected') errors.push(`categories : ${categoriesResult.reason.message || categoriesResult.reason}`);
-  if (teamMembersResult.status === 'rejected') errors.push(`team_members (liste) : ${teamMembersResult.reason.message || teamMembersResult.reason}`);
+  if (teamMemberResult.status === 'rejected') errors.push(`team_members: ${teamMemberResult.reason.message || teamMemberResult.reason}`);
+  if (villasResult.status === 'rejected') errors.push(`villas: ${villasResult.reason.message || villasResult.reason}`);
+  if (categoriesResult.status === 'rejected') errors.push(`categories: ${categoriesResult.reason.message || categoriesResult.reason}`);
+  if (teamMembersResult.status === 'rejected') errors.push(`team_members (list): ${teamMembersResult.reason.message || teamMembersResult.reason}`);
 
   const refData = {
     currentTeamMember: teamMemberResult.status === 'fulfilled' ? teamMemberResult.value : null,
@@ -83,12 +83,12 @@ function renderBootError(errors) {
   document.getElementById('villa-switch').innerHTML = '';
   document.getElementById('legend').innerHTML = '';
   document.getElementById('header-title').textContent = 'Villa Ops';
-  document.getElementById('header-eyebrow').textContent = 'Erreur de chargement';
+  document.getElementById('header-eyebrow').textContent = 'Loading error';
   document.querySelector('.views-wrap').innerHTML = `
     <div class="view">
       <div class="empty-state" style="padding-top:40px; text-align:left;">
-        <b style="text-align:center; display:block;">Erreur au chargement des données</b>
-        <p style="margin:14px 0 6px;">Le détail technique ci-dessous aide à diagnostiquer le souci (policy RLS, table, etc.) :</p>
+        <b style="text-align:center; display:block;">Error loading data</b>
+        <p style="margin:14px 0 6px;">The technical detail below helps diagnose the issue (RLS policy, table, etc.):</p>
         <pre style="white-space:pre-wrap; background:var(--ink-2); border:1px solid var(--line); border-radius:10px; padding:12px; font-family:var(--font-mono); font-size:11.5px; color:#E8A088;">${escapeHtml(errors.join('\n'))}</pre>
       </div>
     </div>`;
@@ -100,13 +100,13 @@ function renderNoProfileState() {
   document.getElementById('villa-switch').innerHTML = '';
   document.getElementById('legend').innerHTML = '';
   document.getElementById('header-title').textContent = 'Villa Ops';
-  document.getElementById('header-eyebrow').textContent = 'Profil incomplet';
+  document.getElementById('header-eyebrow').textContent = 'Incomplete profile';
   document.querySelector('.views-wrap').innerHTML = `
     <div class="view">
       <div class="empty-state" style="padding-top:60px;">
-        <b>Profil pas encore configuré</b>
-        Ton compte existe mais aucun profil Villa Ops n'y est encore associé.
-        Contacte l'administrateur pour finaliser ton accès.
+        <b>Profile not set up yet</b>
+        Your account exists but no Villa Ops profile is linked to it yet.
+        Contact the administrator to finish setting up your access.
       </div>
     </div>`;
   document.getElementById('fab-add').classList.add('hidden');
@@ -115,7 +115,7 @@ function renderNoProfileState() {
 
 function renderVillaSwitch() {
   const box = document.getElementById('villa-switch');
-  const chips = [`<button type="button" class="villa-chip${state.selectedVillaId === 'all' ? ' active' : ''}" data-villa="all">Toutes les villas</button>`];
+  const chips = [`<button type="button" class="villa-chip${state.selectedVillaId === 'all' ? ' active' : ''}" data-villa="all">All villas</button>`];
   state.villas.forEach((v) => {
     chips.push(`<button type="button" class="villa-chip${state.selectedVillaId === v.id ? ' active' : ''}" data-villa="${v.id}">${escapeHtml(v.name)}</button>`);
   });
@@ -144,7 +144,7 @@ function renderLegend() {
 function updateHeaderEyebrow() {
   const eyebrow = document.getElementById('header-eyebrow');
   if (state.selectedVillaId === 'all') {
-    eyebrow.textContent = 'Toutes les villas';
+    eyebrow.textContent = 'All villas';
   } else {
     const villa = state.villasById.get(state.selectedVillaId);
     eyebrow.textContent = villa ? villa.name : 'Villa Ops';

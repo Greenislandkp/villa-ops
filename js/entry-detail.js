@@ -1,14 +1,14 @@
-import { state } from './store.js';
-import { fetchEntryById, fetchReservationsForEntries, updateEntryStatus } from './data.js';
+import { state, isAdmin } from './store.js';
+import { fetchEntryById, fetchReservationsForEntries, updateEntryStatus, deleteEntry } from './data.js';
 import { supabase, ENTRY_PHOTOS_BUCKET } from './supabase-client.js';
-import { escapeHtml, formatEntryTimestamp, statusLabel, hexOrFallback, getSignedPhotoUrl } from './utils.js';
+import { escapeHtml, formatEntryTimestamp, formatDateShort, statusLabel, hexOrFallback, getSignedPhotoUrl, isReservationCategory, showToast } from './utils.js';
 
 function closeSheet() {
   document.getElementById('sheet-root').innerHTML = '';
 }
 
 export async function openEntryDetail(entryId, onChanged) {
-  const overlayHtml = `<div class="sheet-overlay" id="detail-overlay"><div class="sheet"><div class="loading-row">Chargement…</div></div></div>`;
+  const overlayHtml = `<div class="sheet-overlay" id="detail-overlay"><div class="sheet"><div class="loading-row">Loading…</div></div></div>`;
   document.getElementById('sheet-root').innerHTML = overlayHtml;
   const overlay = document.getElementById('detail-overlay');
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeSheet(); });
@@ -43,17 +43,18 @@ function renderDetail(entry, reservation, photoUrl, onChanged) {
   const author = state.teamMembersById.get(entry.author_id);
   const assigned = entry.assigned_to_id ? state.teamMembersById.get(entry.assigned_to_id) : null;
   const villa = state.villasById.get(entry.villa_id);
+  const isReservation = isReservationCategory(cat);
 
   const html = `
   <div class="sheet-overlay" id="detail-overlay">
     <div class="sheet">
       <button type="button" class="sheet-close" id="detail-close">✕</button>
       <div class="sheet-handle"></div>
-      <span class="entry-label" style="color:${color}">${escapeHtml(cat ? cat.label : 'Autre')}</span>
+      <span class="entry-label" style="color:${color}">${escapeHtml(cat ? cat.label : 'Other')}</span>
       <p class="sheet-title" style="margin-top:6px;">${escapeHtml(entry.title)}</p>
 
       ${entry.description ? `<p class="entry-desc" style="margin-bottom:16px;">${escapeHtml(entry.description)}</p>` : ''}
-      ${photoUrl ? `<img src="${photoUrl}" alt="Photo de l'entrée" class="photo-preview show" style="margin-bottom:16px;">` : ''}
+      ${photoUrl ? `<img src="${photoUrl}" alt="Entry photo" class="photo-preview show" style="margin-bottom:16px;">` : ''}
 
       <div class="form-grid" style="gap:10px; margin-bottom:18px;">
         <div class="entry-meta" style="font-size:13px;">
@@ -62,21 +63,23 @@ function renderDetail(entry, reservation, photoUrl, onChanged) {
         </div>
         <div class="entry-meta" style="font-size:13px;">
           <span class="avatar">${escapeHtml((author && author.full_name || '?').slice(0, 2).toUpperCase())}</span>
-          <span>Ajouté par ${escapeHtml((author && author.full_name) || 'Inconnu')}</span>
+          <span>Added by ${escapeHtml((author && author.full_name) || 'Unknown')}</span>
         </div>
-        ${assigned ? `<div class="entry-meta" style="font-size:13px;">→ Assigné à ${escapeHtml(assigned.full_name)}</div>` : ''}
+        ${assigned ? `<div class="entry-meta" style="font-size:13px;">→ Assigned to ${escapeHtml(assigned.full_name)}</div>` : ''}
         ${reservation ? reservationSummaryHtml(reservation, entry) : ''}
       </div>
 
-      <div class="field">
-        <label>Statut</label>
+      <div class="field${isReservation ? ' hidden' : ''}">
+        <label>Status</label>
         <div class="chip-select" id="detail-status-chips">
-          <button type="button" class="status-option a_faire${entry.status === 'a_faire' ? ' active a_faire' : ''}" data-status="a_faire">À faire</button>
-          <button type="button" class="status-option en_cours${entry.status === 'en_cours' ? ' active en_cours' : ''}" data-status="en_cours">En cours</button>
-          <button type="button" class="status-option fait${entry.status === 'fait' ? ' active fait' : ''}" data-status="fait">Fait</button>
+          <button type="button" class="status-option a_faire${entry.status === 'a_faire' ? ' active a_faire' : ''}" data-status="a_faire">To do</button>
+          <button type="button" class="status-option en_cours${entry.status === 'en_cours' ? ' active en_cours' : ''}" data-status="en_cours">In progress</button>
+          <button type="button" class="status-option fait${entry.status === 'fait' ? ' active fait' : ''}" data-status="fait">Done</button>
         </div>
       </div>
       <div class="form-error" id="detail-error"></div>
+
+      ${isAdmin() ? `<button type="button" class="btn-secondary" id="detail-delete" style="margin-top:18px; color:#E8A088; border-color:rgba(181,80,42,0.4);">Delete entry</button>` : ''}
     </div>
   </div>`;
 
@@ -86,29 +89,58 @@ function renderDetail(entry, reservation, photoUrl, onChanged) {
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeSheet(); });
   document.getElementById('detail-close').addEventListener('click', closeSheet);
 
-  document.getElementById('detail-status-chips').addEventListener('click', async (e) => {
-    const btn = e.target.closest('[data-status]');
-    if (!btn || btn.classList.contains('active')) return;
-    const newStatus = btn.dataset.status;
-    try {
-      await updateEntryStatus(entry.id, newStatus);
-      document.querySelectorAll('#detail-status-chips .status-option').forEach((b) => {
-        b.classList.toggle('active', b.dataset.status === newStatus);
-      });
-      entry.status = newStatus;
-      if (onChanged) onChanged();
-    } catch (err) {
-      const box = document.getElementById('detail-error');
-      box.textContent = err.message || 'Mise à jour impossible.';
-      box.classList.add('show');
-    }
-  });
+  const statusChips = document.getElementById('detail-status-chips');
+  if (statusChips) {
+    statusChips.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-status]');
+      if (!btn || btn.classList.contains('active')) return;
+      const newStatus = btn.dataset.status;
+      try {
+        await updateEntryStatus(entry.id, newStatus);
+        document.querySelectorAll('#detail-status-chips .status-option').forEach((b) => {
+          b.classList.toggle('active', b.dataset.status === newStatus);
+        });
+        entry.status = newStatus;
+        if (onChanged) onChanged();
+      } catch (err) {
+        const box = document.getElementById('detail-error');
+        box.textContent = err.message || 'Update failed.';
+        box.classList.add('show');
+      }
+    });
+  }
+
+  const deleteBtn = document.getElementById('detail-delete');
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', async () => {
+      const confirmed = window.confirm(`Delete "${entry.title}"? This can't be undone.`);
+      if (!confirmed) return;
+      deleteBtn.disabled = true;
+      deleteBtn.textContent = 'Deleting…';
+      try {
+        await deleteEntry(entry);
+        closeSheet();
+        showToast('Entry deleted.');
+        if (onChanged) onChanged();
+      } catch (err) {
+        deleteBtn.disabled = false;
+        deleteBtn.textContent = 'Delete entry';
+        const box = document.getElementById('detail-error');
+        box.textContent = err.message || 'Could not delete this entry.';
+        box.classList.add('show');
+      }
+    });
+  }
 }
 
 function reservationSummaryHtml(reservation, entry) {
   const bits = [];
-  if (reservation.guest_count) bits.push(`${reservation.guest_count} pers.`);
+  if (reservation.guest_count) bits.push(`${reservation.guest_count} guests`);
   if (reservation.platform) bits.push(reservation.platform);
+  const arrival = entry.event_date ? formatDateShort(entry.event_date) : null;
+  const departure = reservation.check_out_date ? formatDateShort(reservation.check_out_date) : null;
+  if (arrival && departure) bits.push(`${arrival} → ${departure}`);
+  else if (arrival) bits.push(`From ${arrival}`);
   if (entry.check_in_time) bits.push(`Check-in ${entry.check_in_time.slice(0, 5)}`);
   if (entry.check_out_time) bits.push(`Check-out ${entry.check_out_time.slice(0, 5)}`);
   if (reservation.amount) bits.push(`${reservation.amount} ${reservation.currency || ''}`.trim());

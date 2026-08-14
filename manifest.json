@@ -1,14 +1,14 @@
 {
   "name": "Villa Ops",
   "short_name": "Villa Ops",
-  "description": "Journal de bord et calendrier pour l'équipe Villa Ops.",
+  "description": "Log book and calendar for the Villa Ops team.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#16231F",
   "theme_color": "#16231F",
-  "lang": "fr",
+  "lang": "en",
   "icons": [
     {
       "src": "icons/icon-192.png",
