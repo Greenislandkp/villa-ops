@@ -1,21 +1,39 @@
 import { state, addCategory } from './store.js';
-import { createCategory, createEntry, createReservation, uploadEntryPhoto, updateEntryPhoto, deleteEntry } from './data.js';
-import { escapeHtml, todayIso, isReservationCategory, isCleaningCategory, showToast } from './utils.js';
+import {
+  createCategory,
+  createEntry,
+  createReservation,
+  updateEntry,
+  saveReservationForEntry,
+  deleteReservationForEntry,
+  uploadEntryPhoto,
+  updateEntryPhoto,
+  deleteEntry,
+} from './data.js';
+import { supabase, ENTRY_PHOTOS_BUCKET } from './supabase-client.js';
+import { escapeHtml, todayIso, isReservationCategory, isCleaningCategory, normalizeLabel, showToast, getSignedPhotoUrl } from './utils.js';
 
 const CATEGORY_COLORS = ['#3E7C59', '#D98E04', '#B5502A', '#8B9A93', '#C99A3D', '#5B7FA6', '#8B5FBF'];
+const CHECKOUT_CATEGORY_COLOR = '#8B5FBF';
 
 let selectedVillaId = null;
 let selectedCategoryId = null;
 let selectedStatus = 'a_faire';
 let newCategoryColor = CATEGORY_COLORS[0];
 let photoFile = null;
+let editingEntry = null;
+let editingReservation = null;
 
 function closeSheet() {
   document.getElementById('sheet-root').innerHTML = '';
   photoFile = null;
+  editingEntry = null;
+  editingReservation = null;
 }
 
-export function openEntryForm(onDone) {
+// Pass `entry` (+ its `reservation` row, if any) to edit an existing entry
+// instead of creating a new one.
+export function openEntryForm(onDone, entry = null, reservation = null) {
   if (!state.currentTeamMember) {
     showToast("Your Villa Ops profile isn't set up yet. Contact the administrator.");
     return;
@@ -25,13 +43,34 @@ export function openEntryForm(onDone) {
     return;
   }
 
-  selectedVillaId = state.selectedVillaId !== 'all' ? state.selectedVillaId : state.villas[0].id;
-  selectedCategoryId = state.categories[0] ? state.categories[0].id : null;
-  selectedStatus = 'a_faire';
+  editingEntry = entry;
+  editingReservation = reservation;
   photoFile = null;
+
+  if (entry) {
+    selectedVillaId = entry.villa_id;
+    selectedCategoryId = entry.category_id;
+    selectedStatus = entry.status || 'a_faire';
+  } else {
+    selectedVillaId = state.selectedVillaId !== 'all' ? state.selectedVillaId : state.villas[0].id;
+    selectedCategoryId = state.categories[0] ? state.categories[0].id : null;
+    selectedStatus = 'a_faire';
+  }
 
   renderSheet();
   wireSheet(onDone);
+
+  if (entry && entry.photo_url) {
+    getSignedPhotoUrl(supabase, ENTRY_PHOTOS_BUCKET, entry.photo_url).then((url) => {
+      if (!url) return;
+      const preview = document.getElementById('photo-preview');
+      const label = document.getElementById('photo-label');
+      if (!preview || !label) return;
+      preview.src = url;
+      preview.classList.add('show');
+      label.textContent = '📷 Current photo (tap to replace)';
+    });
+  }
 }
 
 function villaChipsHtml() {
@@ -46,9 +85,17 @@ function categoryChipsHtml() {
     .join('');
 }
 
-function assigneeOptionsHtml() {
-  const opts = state.teamMembers.map((m) => `<option value="${m.id}">${escapeHtml(m.full_name)}</option>`).join('');
-  return `<option value="">No one in particular</option>${opts}`;
+function assigneeOptionsHtml(selectedId) {
+  const opts = state.teamMembers
+    .map((m) => `<option value="${m.id}"${m.id === selectedId ? ' selected' : ''}>${escapeHtml(m.full_name)}</option>`)
+    .join('');
+  return `<option value=""${selectedId ? '' : ' selected'}>No one in particular</option>${opts}`;
+}
+
+function platformOptionsHtml(selected) {
+  return ['Airbnb', 'Booking', 'Direct', 'Other']
+    .map((p) => `<option value="${p}"${p === selected ? ' selected' : ''}>${p}</option>`)
+    .join('');
 }
 
 function colorSwatchesHtml() {
@@ -60,13 +107,27 @@ function renderSheet() {
   const isReservation = isReservationCategory(cat);
   const isCleaning = isCleaningCategory(cat);
   const isStandard = !isReservation && !isCleaning;
+  const isEdit = !!editingEntry;
+
+  const defaultTitle = editingEntry && isStandard ? editingEntry.title : '';
+  const defaultDesc = editingEntry && isStandard ? (editingEntry.description || '') : '';
+  const defaultDate = (editingEntry && editingEntry.event_date) || todayIso();
+  const defaultCleanTime = (editingEntry && editingEntry.check_in_time) ? editingEntry.check_in_time.slice(0, 5) : '';
+  const defaultGuest = editingReservation ? editingReservation.guest_name || '' : '';
+  const defaultGuestCount = editingReservation && editingReservation.guest_count ? editingReservation.guest_count : '';
+  const defaultArrival = (editingEntry && editingEntry.event_date) || todayIso();
+  const defaultDeparture = editingReservation ? editingReservation.check_out_date || '' : '';
+  const defaultCheckin = (editingEntry && editingEntry.check_in_time) ? editingEntry.check_in_time.slice(0, 5) : '';
+  const defaultCheckout = (editingEntry && editingEntry.check_out_time) ? editingEntry.check_out_time.slice(0, 5) : '';
+  const defaultAmount = editingReservation && editingReservation.amount ? editingReservation.amount : '';
+  const defaultCurrency = editingReservation ? editingReservation.currency || '' : '';
 
   const html = `
   <div class="sheet-overlay" id="entry-overlay">
     <div class="sheet">
       <button type="button" class="sheet-close" id="entry-close">✕</button>
       <div class="sheet-handle"></div>
-      <p class="sheet-title">New entry</p>
+      <p class="sheet-title">${isEdit ? 'Edit entry' : 'New entry'}</p>
       <form id="entry-form" class="form-grid">
         <div class="field">
           <label>Villa</label>
@@ -86,26 +147,26 @@ function renderSheet() {
 
         <div class="field${isStandard ? '' : ' hidden'}" id="title-field">
           <label for="entry-title">Title</label>
-          <input type="text" id="entry-title" maxlength="140" placeholder="e.g. AC leak in bedroom 2">
+          <input type="text" id="entry-title" maxlength="140" placeholder="e.g. AC leak in bedroom 2" value="${escapeHtml(defaultTitle)}">
         </div>
 
         <div class="field${isStandard ? '' : ' hidden'}" id="desc-field">
           <label for="entry-desc">Description (optional)</label>
-          <textarea id="entry-desc" class="field-textarea" placeholder="More details…"></textarea>
+          <textarea id="entry-desc" class="field-textarea" placeholder="More details…">${escapeHtml(defaultDesc)}</textarea>
         </div>
 
         <div class="form-row-2">
           <div class="field${isReservation ? ' hidden' : ''}" id="date-field">
             <label for="entry-date">Date</label>
-            <input type="date" id="entry-date" value="${todayIso()}">
+            <input type="date" id="entry-date" value="${defaultDate}">
           </div>
           <div class="field${isCleaning ? '' : ' hidden'}" id="clean-time-field">
             <label for="clean-time">Time (optional)</label>
-            <input type="time" id="clean-time">
+            <input type="time" id="clean-time" value="${defaultCleanTime}">
           </div>
           <div class="field">
             <label for="entry-assignee">Assigned to</label>
-            <select id="entry-assignee" class="field-select">${assigneeOptionsHtml()}</select>
+            <select id="entry-assignee" class="field-select">${assigneeOptionsHtml(editingEntry ? editingEntry.assigned_to_id : null)}</select>
           </div>
         </div>
 
@@ -129,51 +190,46 @@ function renderSheet() {
           <p class="reservation-fields-title">Reservation details</p>
           <div class="field">
             <label for="res-guest">Guest name</label>
-            <input type="text" id="res-guest" maxlength="100">
+            <input type="text" id="res-guest" maxlength="100" value="${escapeHtml(defaultGuest)}">
           </div>
           <div class="form-row-2">
             <div class="field">
               <label for="res-count">Guests</label>
-              <input type="number" id="res-count" min="1" max="40">
+              <input type="number" id="res-count" min="1" max="40" value="${defaultGuestCount}">
             </div>
             <div class="field">
               <label for="res-platform">Platform</label>
-              <select id="res-platform" class="field-select">
-                <option value="Airbnb">Airbnb</option>
-                <option value="Booking">Booking</option>
-                <option value="Direct">Direct</option>
-                <option value="Other">Other</option>
-              </select>
+              <select id="res-platform" class="field-select">${platformOptionsHtml(editingReservation ? editingReservation.platform : 'Airbnb')}</select>
             </div>
           </div>
           <div class="form-row-2">
             <div class="field">
               <label for="res-arrival">Arrival date</label>
-              <input type="date" id="res-arrival" value="${todayIso()}">
+              <input type="date" id="res-arrival" value="${defaultArrival}">
             </div>
             <div class="field">
               <label for="res-departure">Departure date</label>
-              <input type="date" id="res-departure" min="${todayIso()}">
+              <input type="date" id="res-departure" min="${defaultArrival}" value="${defaultDeparture}">
             </div>
           </div>
           <div class="form-row-2">
             <div class="field">
               <label for="res-checkin">Check-in time</label>
-              <input type="time" id="res-checkin">
+              <input type="time" id="res-checkin" value="${defaultCheckin}">
             </div>
             <div class="field">
               <label for="res-checkout">Check-out time</label>
-              <input type="time" id="res-checkout">
+              <input type="time" id="res-checkout" value="${defaultCheckout}">
             </div>
           </div>
           <div class="form-row-2">
             <div class="field">
               <label for="res-amount">Amount</label>
-              <input type="number" id="res-amount" min="0" step="0.01">
+              <input type="number" id="res-amount" min="0" step="0.01" value="${defaultAmount}">
             </div>
             <div class="field">
               <label for="res-currency">Currency</label>
-              <input type="text" id="res-currency" maxlength="8" placeholder="THB">
+              <input type="text" id="res-currency" maxlength="8" placeholder="THB" value="${escapeHtml(defaultCurrency)}">
             </div>
           </div>
         </div>
@@ -182,7 +238,7 @@ function renderSheet() {
 
         <div class="sheet-actions">
           <button type="button" class="btn-secondary" id="entry-cancel">Cancel</button>
-          <button type="submit" class="btn-primary" id="entry-submit">Add</button>
+          <button type="submit" class="btn-primary" id="entry-submit">${isEdit ? 'Save changes' : 'Add'}</button>
         </div>
       </form>
     </div>
@@ -296,10 +352,19 @@ function refreshCategoryUI() {
   document.getElementById('reservation-fields').classList.toggle('show', isReservation);
 }
 
+async function getOrCreateCheckoutCategory() {
+  const existing = state.categories.find((c) => normalizeLabel(c.label) === 'checkout');
+  if (existing) return existing;
+  const cat = await createCategory({ label: 'Checkout', color: CHECKOUT_CATEGORY_COLOR });
+  addCategory(cat);
+  return cat;
+}
+
 async function submitEntry(onDone) {
   const errorBox = document.getElementById('entry-form-error');
   errorBox.classList.remove('show');
   const submitBtn = document.getElementById('entry-submit');
+  const isEdit = !!editingEntry;
 
   const cat = state.categoriesById.get(selectedCategoryId);
   const isReservation = isReservationCategory(cat);
@@ -361,7 +426,7 @@ async function submitEntry(onDone) {
   }
 
   submitBtn.disabled = true;
-  submitBtn.textContent = 'Adding…';
+  submitBtn.textContent = isEdit ? 'Saving…' : 'Adding…';
 
   try {
     const checkInTime = isReservation
@@ -371,57 +436,94 @@ async function submitEntry(onDone) {
         : null;
     const checkOutTime = isReservation ? document.getElementById('res-checkout').value || null : null;
 
-    const entry = await createEntry({
+    const basePayload = {
       villa_id: selectedVillaId,
       category_id: selectedCategoryId,
       title,
       description: isStandard ? (document.getElementById('entry-desc').value.trim() || null) : null,
-      author_id: state.currentTeamMember.id,
       assigned_to_id: document.getElementById('entry-assignee').value || null,
       status: isReservation ? 'fait' : selectedStatus,
       event_date: eventDate,
       check_in_time: checkInTime,
       check_out_time: checkOutTime,
-      photo_url: null,
-    });
+    };
+
+    let entry;
+    if (isEdit) {
+      entry = await updateEntry(editingEntry.id, basePayload);
+    } else {
+      entry = await createEntry({ ...basePayload, author_id: state.currentTeamMember.id, photo_url: null });
+    }
 
     if (isReservation) {
       const guestCount = document.getElementById('res-count').value;
       const amount = document.getElementById('res-amount').value;
+      const reservationPayload = {
+        guest_name: guestName,
+        guest_count: guestCount ? Number(guestCount) : null,
+        platform: document.getElementById('res-platform').value || null,
+        amount: amount ? Number(amount) : null,
+        currency: document.getElementById('res-currency').value.trim() || null,
+        check_out_date: document.getElementById('res-departure').value,
+      };
       try {
-        await createReservation({
-          entry_id: entry.id,
-          guest_name: guestName,
-          guest_count: guestCount ? Number(guestCount) : null,
-          platform: document.getElementById('res-platform').value || null,
-          amount: amount ? Number(amount) : null,
-          currency: document.getElementById('res-currency').value.trim() || null,
-          check_out_date: document.getElementById('res-departure').value,
-        });
+        if (isEdit) {
+          await saveReservationForEntry(entry.id, reservationPayload);
+        } else {
+          await createReservation({ entry_id: entry.id, ...reservationPayload });
+        }
       } catch (resErr) {
-        // Roll back the entry so we never leave an orphaned journal row
-        // without its reservation details.
-        await deleteEntry(entry).catch(() => {});
+        if (!isEdit) {
+          // Roll back the entry so we never leave an orphaned journal row
+          // without its reservation details.
+          await deleteEntry(entry).catch(() => {});
+        }
         throw resErr;
       }
+    } else if (isEdit && editingReservation) {
+      // Category was switched away from Reservation: drop the now-stale row.
+      await deleteReservationForEntry(entry.id).catch(() => {});
     }
 
-    if (photoFile && !isReservation) {
+    if (photoFile) {
       try {
         const path = await uploadEntryPhoto(selectedVillaId, entry.id, photoFile);
         await updateEntryPhoto(entry.id, path);
       } catch (photoErr) {
-        showToast('Entry added, but the photo upload failed.');
+        showToast(`Entry ${isEdit ? 'updated' : 'added'}, but the photo upload failed.`);
+      }
+    }
+
+    // Auto-generate a Checkout task on the departure date — creation only,
+    // to avoid duplicating it on every subsequent edit of the same stay.
+    if (isReservation && !isEdit) {
+      try {
+        const checkoutCat = await getOrCreateCheckoutCategory();
+        await createEntry({
+          villa_id: selectedVillaId,
+          category_id: checkoutCat.id,
+          title: `Checkout — ${guestName}`,
+          description: null,
+          author_id: state.currentTeamMember.id,
+          assigned_to_id: document.getElementById('entry-assignee').value || null,
+          status: 'a_faire',
+          event_date: document.getElementById('res-departure').value,
+          check_in_time: document.getElementById('res-checkout').value || null,
+          check_out_time: null,
+          photo_url: null,
+        });
+      } catch (taskErr) {
+        showToast('Reservation added, but the checkout task could not be created.');
       }
     }
 
     closeSheet();
-    showToast('Entry added.');
+    showToast(isEdit ? 'Entry updated.' : 'Entry added.');
     if (onDone) onDone();
   } catch (err) {
-    errorBox.textContent = err.message || "Couldn't add this entry right now.";
+    errorBox.textContent = err.message || `Couldn't ${isEdit ? 'save' : 'add'} this entry right now.`;
     errorBox.classList.add('show');
     submitBtn.disabled = false;
-    submitBtn.textContent = 'Add';
+    submitBtn.textContent = isEdit ? 'Save changes' : 'Add';
   }
 }

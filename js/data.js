@@ -8,28 +8,34 @@ import { supabase, ENTRY_PHOTOS_BUCKET } from './supabase-client.js';
 
 const ENTRY_COLUMNS = 'id, villa_id, category_id, title, description, author_id, assigned_to_id, status, event_date, check_in_time, check_out_time, photo_url, created_at, updated_at';
 
-export async function fetchJournalEntries({ villaId, categoryId, limit = 100 }) {
-  let q = supabase.from('entries').select(ENTRY_COLUMNS).order('created_at', { ascending: false }).limit(limit);
+// sortBy: 'due' (event_date) or 'added' (created_at) — default 'added' to
+// keep the classic chronological feed unless the caller asks otherwise.
+export async function fetchJournalEntries({ villaId, categoryId, sortBy = 'added', limit = 100 }) {
+  let q = supabase.from('entries').select(ENTRY_COLUMNS).limit(limit);
   if (villaId && villaId !== 'all') q = q.eq('villa_id', villaId);
   if (categoryId && categoryId !== 'all') q = q.eq('category_id', categoryId);
+  q = sortBy === 'due'
+    ? q.order('event_date', { ascending: true }).order('created_at', { ascending: false })
+    : q.order('created_at', { ascending: false });
   const { data, error } = await q;
   if (error) throw error;
   return data || [];
 }
 
-// excludeCategoryId : les réservations ne sont pas des "tâches" (pas de
-// notion à faire/en cours/fait pertinente pour un séjour), donc exclues
-// quel que soit leur statut réel en base.
-export async function fetchTaskEntries({ villaId, excludeCategoryId, limit = 200 }) {
+// excludeCategoryId: reservations aren't "tasks" (no meaningful to-do/in
+// progress/done for a stay), so excluded regardless of their real status.
+// sortBy: 'due' (event_date, default) or 'added' (created_at).
+export async function fetchTaskEntries({ villaId, excludeCategoryId, sortBy = 'due', limit = 200 }) {
   let q = supabase
     .from('entries')
     .select(ENTRY_COLUMNS)
     .in('status', ['a_faire', 'en_cours'])
-    .order('event_date', { ascending: true })
-    .order('created_at', { ascending: false })
     .limit(limit);
   if (villaId && villaId !== 'all') q = q.eq('villa_id', villaId);
   if (excludeCategoryId) q = q.neq('category_id', excludeCategoryId);
+  q = sortBy === 'added'
+    ? q.order('created_at', { ascending: false })
+    : q.order('event_date', { ascending: true }).order('created_at', { ascending: false });
   const { data, error } = await q;
   if (error) throw error;
   return data || [];
@@ -117,6 +123,36 @@ export async function createReservation(payload) {
   const { data, error } = await supabase.from('reservations').insert(payload).select('*').single();
   if (error) throw error;
   return data;
+}
+
+export async function updateEntry(entryId, payload) {
+  const { data, error } = await supabase.from('entries').update(payload).eq('id', entryId).select('*').single();
+  if (error) throw error;
+  return data;
+}
+
+// Update the reservation row tied to an entry, or create one if it didn't
+// have one yet (e.g. entry was edited into the Reservation category).
+export async function saveReservationForEntry(entryId, payload) {
+  const { data: existing, error: fetchError } = await supabase
+    .from('reservations')
+    .select('id')
+    .eq('entry_id', entryId)
+    .maybeSingle();
+  if (fetchError) throw fetchError;
+
+  if (existing) {
+    const { error } = await supabase.from('reservations').update(payload).eq('entry_id', entryId);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.from('reservations').insert({ entry_id: entryId, ...payload });
+    if (error) throw error;
+  }
+}
+
+export async function deleteReservationForEntry(entryId) {
+  const { error } = await supabase.from('reservations').delete().eq('entry_id', entryId);
+  if (error) throw error;
 }
 
 export async function updateEntryPhoto(entryId, photoPath) {

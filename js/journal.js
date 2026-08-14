@@ -4,6 +4,22 @@ import { entryCardHtml } from './entry-card.js';
 import { escapeHtml } from './utils.js';
 
 let categoryFilter = 'all';
+let sortBy = 'added'; // 'added' (created_at, default feed order) or 'due' (event_date)
+
+function renderSortToggle() {
+  const box = document.getElementById('journal-sort-toggle');
+  box.innerHTML = `
+    <button class="cat-chip${sortBy === 'added' ? ' active' : ''}" data-sort="added">Date added</button>
+    <button class="cat-chip${sortBy === 'due' ? ' active' : ''}" data-sort="due">Due date</button>
+  `;
+  box.querySelectorAll('[data-sort]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      sortBy = btn.dataset.sort;
+      renderSortToggle();
+      renderList();
+    });
+  });
+}
 
 function renderCatFilter() {
   const box = document.getElementById('journal-cat-filter');
@@ -27,7 +43,7 @@ async function renderList() {
   const list = document.getElementById('journal-list');
   list.innerHTML = '<div class="loading-row">Loading…</div>';
   try {
-    const entries = await fetchJournalEntries({ villaId: state.selectedVillaId, categoryId: categoryFilter });
+    const entries = await fetchJournalEntries({ villaId: state.selectedVillaId, categoryId: categoryFilter, sortBy });
     if (!entries.length) {
       list.innerHTML = `<div class="empty-state"><b>Nothing to show</b>No entries for this selection. Tap + to add one.</div>`;
       return;
@@ -41,6 +57,7 @@ async function renderList() {
 }
 
 export async function renderJournal() {
+  renderSortToggle();
   renderCatFilter();
   await renderList();
 }

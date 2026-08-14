@@ -1,4 +1,4 @@
-import { escapeHtml, formatEntryTimestamp, initials, statusLabel, hexOrFallback, isReservationCategory } from './utils.js';
+import { escapeHtml, formatDueDate, initials, statusLabel, hexOrFallback, isReservationCategory } from './utils.js';
 
 // ctx: { categoriesById, teamMembersById, villasById, showVilla }
 export function entryCardHtml(entry, ctx) {
@@ -26,7 +26,7 @@ export function entryCardHtml(entry, ctx) {
     <div class="entry-body">
       <div class="entry-top">
         <span class="entry-label" style="color:${color}">${escapeHtml(label)}</span>
-        <span class="entry-time">${formatEntryTimestamp(entry.created_at)}</span>
+        <span class="entry-time">${escapeHtml(formatDueDate(entry.event_date))}</span>
       </div>
       <div class="entry-title">${escapeHtml(entry.title)}</div>
       <div class="entry-meta">

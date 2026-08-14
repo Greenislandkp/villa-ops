@@ -46,6 +46,17 @@ export function formatEntryTimestamp(createdAt) {
   return `${DOW_SHORT[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
 }
 
+// event_date (a date, no time) -> "Today" / "Tomorrow" / "Yesterday" / "Mon 10 Aug"
+export function formatDueDate(eventDateIso) {
+  if (!eventDateIso) return '—';
+  const todayIsoStr = todayIso();
+  if (eventDateIso === todayIsoStr) return 'Today';
+  if (eventDateIso === addDaysIso(todayIsoStr, 1)) return 'Tomorrow';
+  if (eventDateIso === addDaysIso(todayIsoStr, -1)) return 'Yesterday';
+  const d = new Date(eventDateIso + 'T00:00:00');
+  return `${DOW_SHORT[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
+}
+
 export function formatDateLong(isoStr) {
   const d = new Date(isoStr + 'T00:00:00');
   return `${MONTHS[d.getMonth()]} ${d.getDate()}`;

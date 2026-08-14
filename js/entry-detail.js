@@ -1,7 +1,8 @@
 import { state, isAdmin } from './store.js';
 import { fetchEntryById, fetchReservationsForEntries, updateEntryStatus, deleteEntry } from './data.js';
 import { supabase, ENTRY_PHOTOS_BUCKET } from './supabase-client.js';
-import { escapeHtml, formatEntryTimestamp, formatDateShort, statusLabel, hexOrFallback, getSignedPhotoUrl, isReservationCategory, showToast } from './utils.js';
+import { escapeHtml, formatEntryTimestamp, formatDueDate, formatDateShort, statusLabel, hexOrFallback, getSignedPhotoUrl, isReservationCategory, showToast } from './utils.js';
+import { openEntryForm } from './entry-form.js';
 
 function closeSheet() {
   document.getElementById('sheet-root').innerHTML = '';
@@ -59,8 +60,9 @@ function renderDetail(entry, reservation, photoUrl, onChanged) {
       <div class="form-grid" style="gap:10px; margin-bottom:18px;">
         <div class="entry-meta" style="font-size:13px;">
           ${villa ? `<span>${escapeHtml(villa.name)}</span><span class="sep">·</span>` : ''}
-          <span>${formatEntryTimestamp(entry.created_at)}</span>
+          <span>Added ${formatEntryTimestamp(entry.created_at)}</span>
         </div>
+        ${isReservation ? '' : `<div class="entry-meta" style="font-size:13px;"><span>Due ${escapeHtml(formatDueDate(entry.event_date))}</span></div>`}
         <div class="entry-meta" style="font-size:13px;">
           <span class="avatar">${escapeHtml((author && author.full_name || '?').slice(0, 2).toUpperCase())}</span>
           <span>Added by ${escapeHtml((author && author.full_name) || 'Unknown')}</span>
@@ -79,7 +81,10 @@ function renderDetail(entry, reservation, photoUrl, onChanged) {
       </div>
       <div class="form-error" id="detail-error"></div>
 
-      ${isAdmin() ? `<button type="button" class="btn-secondary" id="detail-delete" style="margin-top:18px; color:#E8A088; border-color:rgba(181,80,42,0.4);">Delete entry</button>` : ''}
+      <div class="sheet-actions" style="margin-top:18px;">
+        <button type="button" class="btn-secondary" id="detail-edit">Edit entry</button>
+        ${isAdmin() ? `<button type="button" class="btn-secondary" id="detail-delete" style="color:#E8A088; border-color:rgba(181,80,42,0.4);">Delete entry</button>` : ''}
+      </div>
     </div>
   </div>`;
 
@@ -109,6 +114,11 @@ function renderDetail(entry, reservation, photoUrl, onChanged) {
       }
     });
   }
+
+  document.getElementById('detail-edit').addEventListener('click', () => {
+    closeSheet();
+    openEntryForm(onChanged, entry, reservation);
+  });
 
   const deleteBtn = document.getElementById('detail-delete');
   if (deleteBtn) {
