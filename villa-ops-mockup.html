@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Villa Ops — Maquette</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16231F;
+    --ink-2:#1E2F28;
+    --paper:#EDE6D6;
+    --paper-2:#F7F4EC;
+    --brass:#C99A3D;
+    --clay:#B5502A;
+    --palm:#3E7C59;
+    --fog:#8B9A93;
+    --amber:#D98E04;
+    --line: rgba(237,230,214,0.14);
+    --font-display: 'Fraunces', serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at top, #1c2b25 0%, #0f1713 70%);
+    font-family: var(--font-body);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 40px 16px;
+  }
+  .frame{
+    width:390px;
+    max-width:100%;
+    background: var(--ink);
+    border-radius: 34px;
+    border: 1px solid rgba(237,230,214,0.08);
+    box-shadow: 0 40px 80px -20px rgba(0,0,0,0.6), 0 0 0 8px rgba(0,0,0,0.25);
+    overflow:hidden;
+    position:relative;
+  }
+  .notch{
+    position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width:120px; height:22px; background:#0f1713; border-radius:0 0 16px 16px; z-index:5;
+  }
+
+  /* header */
+  header{
+    padding: 40px 20px 14px;
+    color: var(--paper-2);
+  }
+  .eyebrow{
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin: 0 0 6px;
+  }
+  h1{
+    font-family: var(--font-display);
+    font-weight:600;
+    font-size: 26px;
+    margin: 0 0 16px;
+    letter-spacing: -0.01em;
+  }
+  .villa-switch{
+    display:flex; gap:8px; overflow-x:auto; padding-bottom:4px;
+    scrollbar-width:none;
+  }
+  .villa-switch::-webkit-scrollbar{display:none;}
+  .villa-chip{
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight:600;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border:1px solid var(--line);
+    color: var(--fog);
+    white-space:nowrap;
+    background: transparent;
+  }
+  .villa-chip.active{
+    background: var(--paper);
+    color: var(--ink);
+    border-color: var(--paper);
+  }
+
+  /* segmented control */
+  .segmented{
+    margin: 16px 20px 8px;
+    display:flex;
+    background: var(--ink-2);
+    border-radius: 12px;
+    padding: 4px;
+    gap:4px;
+  }
+  .seg-btn{
+    flex:1;
+    text-align:center;
+    padding: 9px 0;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight:600;
+    color: var(--fog);
+    border-radius: 9px;
+    cursor:pointer;
+  }
+  .seg-btn.active{
+    background: var(--brass);
+    color: #241704;
+  }
+
+  /* legend */
+  .legend{
+    display:flex; gap:14px; padding: 4px 20px 14px; flex-wrap:wrap;
+  }
+  .legend-item{
+    display:flex; align-items:center; gap:6px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--fog);
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+  }
+  .dot{width:7px; height:7px; border-radius:50%;}
+  .dot.palm{background:var(--palm);}
+  .dot.amber{background:var(--amber);}
+  .dot.clay{background:var(--clay);}
+  .dot.fog{background:var(--fog);}
+
+  .view{ padding: 0 20px 20px; }
+  .hidden{display:none;}
+
+  /* ===== CALENDAR VIEW ===== */
+  .cal-card{
+    background: var(--paper);
+    border-radius: 20px;
+    padding: 18px 16px 20px;
+    color: var(--ink);
+  }
+  .cal-month{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .cal-month span{
+    font-family: var(--font-display);
+    font-size:18px; font-weight:600;
+  }
+  .cal-nav{ display:flex; gap:10px; color:var(--ink); opacity:0.5; font-size:14px; }
+  .cal-grid{
+    display:grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px 2px;
+  }
+  .cal-dow{
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    text-align:center;
+    color: rgba(22,35,31,0.45);
+    letter-spacing:0.06em;
+    padding-bottom:4px;
+  }
+  .cal-day{
+    position:relative;
+    aspect-ratio: 1;
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-body);
+    font-size: 12.5px;
+    font-weight:500;
+    border-radius: 9px;
+    color: rgba(22,35,31,0.75);
+  }
+  .cal-day.muted{ color: rgba(22,35,31,0.28); }
+  .cal-day.today{ box-shadow: inset 0 0 0 1.5px var(--ink); font-weight:700; }
+  .cal-day .bar{
+    position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
+    height:4px; border-radius:3px;
+  }
+  .cal-day .bar.occ{ width:70%; background: var(--palm); }
+  .cal-day .bar.clean{ width:70%; background: var(--amber); }
+  .cal-day .bar.maint{ width:70%; background: var(--clay); }
+  .cal-day .bar.split{ width:70%; background: linear-gradient(90deg, var(--palm) 50%, var(--amber) 50%); }
+
+  .day-detail{
+    margin-top: 22px;
+  }
+  .day-detail h3{
+    font-family: var(--font-mono);
+    font-size:11px; text-transform:uppercase; letter-spacing:0.1em;
+    color: var(--brass); margin: 0 0 10px;
+  }
+  .slot{
+    display:flex; gap:10px; align-items:flex-start;
+    padding: 10px 0; border-top: 1px solid var(--line);
+  }
+  .slot:first-of-type{border-top:none;}
+  .slot-time{
+    font-family: var(--font-mono); font-size:12px; color: var(--brass);
+    min-width:44px; padding-top:1px;
+  }
+  .slot-text b{ color: var(--paper-2); font-size:13.5px; display:block; }
+  .slot-text span{ color: var(--fog); font-size:12px; }
+
+  /* ===== JOURNAL VIEW ===== */
+  .entry{
+    display:flex; gap:12px;
+    padding: 14px 0;
+    border-top: 1px solid var(--line);
+  }
+  .entry:first-child{ border-top:none; padding-top:2px; }
+
+  .tag{
+    flex-shrink:0;
+    width:44px; height:56px;
+    background: var(--paper);
+    border-radius: 4px 10px 10px 4px;
+    position:relative;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .tag::before{
+    content:"";
+    position:absolute; left:7px; top:50%; transform:translateY(-50%);
+    width:7px; height:7px; border-radius:50%;
+    background: var(--ink);
+  }
+  .tag::after{
+    content:"";
+    position:absolute; right:-9px; top:50%; transform:translateY(-50%);
+    width:9px; height:2px; background: var(--fog); opacity:0.5;
+  }
+  .tag .stripe{
+    position:absolute; right:0; top:0; bottom:0; width:6px;
+    border-radius: 0 10px 10px 0;
+  }
+  .tag.reservation .stripe{ background: var(--palm); }
+  .tag.cleaning .stripe{ background: var(--amber); }
+  .tag.maintenance .stripe{ background: var(--clay); }
+  .tag.note .stripe{ background: var(--fog); }
+
+  .entry-body{ flex:1; min-width:0; }
+  .entry-top{
+    display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+  }
+  .entry-label{
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+  }
+  .entry-label.reservation{ color: var(--palm); }
+  .entry-label.cleaning{ color: var(--amber); }
+  .entry-label.maintenance{ color: var(--clay); }
+  .entry-label.note{ color: var(--fog); }
+  .entry-time{ font-family: var(--font-mono); font-size:11px; color: var(--fog); }
+  .entry-title{
+    font-family: var(--font-body);
+    font-weight:600; font-size:14.5px;
+    color: var(--paper-2);
+    margin: 3px 0 3px;
+  }
+  .entry-meta{
+    font-size:12px; color: var(--fog);
+    display:flex; align-items:center; gap:6px;
+  }
+  .avatar{
+    width:16px; height:16px; border-radius:50%;
+    background: var(--brass); color:#241704;
+    font-family:var(--font-mono); font-size:8.5px; font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .photo-flag{
+    display:inline-flex; align-items:center; gap:3px;
+    color: var(--brass); font-size:11px; font-family:var(--font-mono);
+  }
+
+  /* FAB */
+  .fab{
+    position:absolute; right:22px; bottom:96px;
+    width:52px; height:52px; border-radius:50%;
+    background: var(--brass);
+    display:flex; align-items:center; justify-content:center;
+    font-size: 24px; color:#241704; font-weight:600;
+    box-shadow: 0 10px 24px -6px rgba(201,154,61,0.5);
+  }
+
+  /* bottom nav */
+  nav{
+    display:flex;
+    border-top: 1px solid var(--line);
+    background: var(--ink-2);
+    padding: 10px 8px 22px;
+  }
+  .nav-item{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
+    font-family: var(--font-mono); font-size: 9.5px; letter-spacing:0.04em;
+    text-transform:uppercase; color: var(--fog);
+  }
+  .nav-item.active{ color: var(--paper-2); }
+  .nav-dot{ width:5px; height:5px; border-radius:50%; background:transparent; }
+  .nav-item.active .nav-dot{ background: var(--brass); }
+
+  .caption{
+    text-align:center; color: rgba(237,230,214,0.35);
+    font-family: var(--font-mono); font-size:11px;
+    margin-top:18px; letter-spacing:0.02em;
+  }
+</style>
+</head>
+<body>
+
+<div>
+  <div class="frame">
+    <div class="notch"></div>
+    <header>
+      <p class="eyebrow">Blue Bay Partners · Journal de bord</p>
+      <h1>Villa Ops</h1>
+      <div class="villa-switch">
+        <div class="villa-chip active">Toutes les villas</div>
+        <div class="villa-chip">Villa Nour</div>
+        <div class="villa-chip">Breath of Paradise</div>
+        <div class="villa-chip">+ Ajouter</div>
+      </div>
+    </header>
+
+    <div class="segmented">
+      <div class="seg-btn active" onclick="showView('journal')">Journal</div>
+      <div class="seg-btn" onclick="showView('calendar')">Calendrier</div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><span class="dot palm"></span>Réservation</div>
+      <div class="legend-item"><span class="dot amber"></span>Ménage</div>
+      <div class="legend-item"><span class="dot clay"></span>Maintenance</div>
+      <div class="legend-item"><span class="dot fog"></span>Note</div>
+    </div>
+
+    <!-- JOURNAL VIEW -->
+    <div id="journal" class="view">
+      <div class="entry">
+        <div class="tag reservation"><div class="stripe"></div></div>
+        <div class="entry-body">
+          <div class="entry-top">
+            <span class="entry-label reservation">Réservation</span>
+            <span class="entry-time">Aujourd'hui, 09:12</span>
+          </div>
+          <div class="entry-title">Check-in confirmé — famille Guerin (4 pers.)</div>
+          <div class="entry-meta"><span class="avatar">MX</span> Max · Breath of Paradise · 14:00</div>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="tag cleaning"><div class="stripe"></div></div>
+        <div class="entry-body">
+          <div class="entry-top">
+            <span class="entry-label cleaning">Ménage</span>
+            <span class="entry-time">Aujourd'hui, 08:40</span>
+          </div>
+          <div class="entry-title">Grand ménage avant arrivée — terminé</div>
+          <div class="entry-meta"><span class="avatar">SO</span> Som · Villa Nour</div>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="tag maintenance"><div class="stripe"></div></div>
+        <div class="entry-body">
+          <div class="entry-top">
+            <span class="entry-label maintenance">Maintenance</span>
+            <span class="entry-time">Hier, 17:05</span>
+          </div>
+          <div class="entry-title">Climatisation chambre 2 — fuite constatée</div>
+          <div class="entry-meta"><span class="avatar">TA</span> Tan · Villa Nour · <span class="photo-flag">📷 2 photos</span></div>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="tag note"><div class="stripe"></div></div>
+        <div class="entry-body">
+          <div class="entry-top">
+            <span class="entry-label note">Note</span>
+            <span class="entry-time">Hier, 11:20</span>
+          </div>
+          <div class="entry-title">Stock savons/shampoings à racheter</div>
+          <div class="entry-meta"><span class="avatar">SO</span> Som · Breath of Paradise</div>
+        </div>
+      </div>
+
+      <div class="entry">
+        <div class="tag cleaning"><div class="stripe"></div></div>
+        <div class="entry-body">
+          <div class="entry-top">
+            <span class="entry-label cleaning">Ménage</span>
+            <span class="entry-time">Lun. 10 août</span>
+          </div>
+          <div class="entry-title">Nettoyage piscine hebdomadaire</div>
+          <div class="entry-meta"><span class="avatar">TA</span> Tan · Villa Nour</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CALENDAR VIEW -->
+    <div id="calendar" class="view hidden">
+      <div class="cal-card">
+        <div class="cal-month">
+          <span class="cal-nav">‹</span>
+          <span>Août 2026</span>
+          <span class="cal-nav">›</span>
+        </div>
+        <div class="cal-grid">
+          <div class="cal-dow">L</div><div class="cal-dow">M</div><div class="cal-dow">M</div><div class="cal-dow">J</div><div class="cal-dow">V</div><div class="cal-dow">S</div><div class="cal-dow">D</div>
+
+          <div class="cal-day muted">27</div><div class="cal-day muted">28</div><div class="cal-day muted">29</div><div class="cal-day muted">30</div><div class="cal-day muted">31</div>
+          <div class="cal-day">1</div><div class="cal-day">2</div>
+
+          <div class="cal-day">3</div><div class="cal-day">4</div><div class="cal-day">5</div><div class="cal-day">6</div><div class="cal-day">7</div><div class="cal-day">8</div><div class="cal-day">9</div>
+
+          <div class="cal-day">10<div class="bar clean"></div></div>
+          <div class="cal-day">11<div class="bar occ"></div></div>
+          <div class="cal-day today">12<div class="bar split"></div></div>
+          <div class="cal-day">13<div class="bar occ"></div></div>
+          <div class="cal-day">14<div class="bar occ"></div></div>
+          <div class="cal-day">15<div class="bar maint"></div></div>
+          <div class="cal-day">16<div class="bar occ"></div></div>
+
+          <div class="cal-day">17<div class="bar occ"></div></div>
+          <div class="cal-day">18<div class="bar occ"></div></div>
+          <div class="cal-day">19<div class="bar clean"></div></div>
+          <div class="cal-day">20</div>
+          <div class="cal-day">21</div>
+          <div class="cal-day">22<div class="bar occ"></div></div>
+          <div class="cal-day">23<div class="bar occ"></div></div>
+
+          <div class="cal-day">24<div class="bar occ"></div></div>
+          <div class="cal-day">25<div class="bar clean"></div></div>
+          <div class="cal-day">26</div>
+          <div class="cal-day">27</div>
+          <div class="cal-day">28<div class="bar maint"></div></div>
+          <div class="cal-day">29<div class="bar occ"></div></div>
+          <div class="cal-day">30<div class="bar occ"></div></div>
+        </div>
+
+        <div class="day-detail">
+          <h3>Aujourd'hui — 12 août</h3>
+          <div class="slot">
+            <span class="slot-time">08:40</span>
+            <div class="slot-text"><b>Ménage terminé</b><span>Villa Nour · avant arrivée</span></div>
+          </div>
+          <div class="slot">
+            <span class="slot-time">14:00</span>
+            <div class="slot-text"><b>Check-in — famille Guerin</b><span>Breath of Paradise · 4 pers.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fab">+</div>
+
+    <nav>
+      <div class="nav-item active"><div class="nav-dot"></div>Journal</div>
+      <div class="nav-item"><div class="nav-dot"></div>Calendrier</div>
+      <div class="nav-item"><div class="nav-dot"></div>Villas</div>
+    </nav>
+  </div>
+  <p class="caption">Maquette — Villa Ops · appuyer sur Journal / Calendrier</p>
+</div>
+
+<script>
+function showView(v){
+  document.getElementById('journal').classList.toggle('hidden', v!=='journal');
+  document.getElementById('calendar').classList.toggle('hidden', v!=='calendar');
+  document.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach((el,i)=>{
+    el.classList.toggle('active', (v==='journal' && i===0) || (v==='calendar' && i===1));
+  });
+}
+</script>
+
+</body>
+</html>

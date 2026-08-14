@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Villa Ops</title>
+<meta name="description" content="Journal de bord et calendrier pour l'équipe Villa Ops.">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#16231F">
+<meta name="background-color" content="#16231F">
+
+<!-- iOS standalone -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Villa Ops">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ===== LOGIN SCREEN ===== -->
+<div id="login-screen" class="login-screen">
+  <div class="login-mark">
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="5" y="4" width="14" height="17" rx="4" fill="#16231F"/>
+      <circle cx="12" cy="9" r="2" fill="#C99A3D"/>
+    </svg>
+  </div>
+  <div class="login-head">
+    <p class="eyebrow">Villa Ops</p>
+    <h1>Journal de bord</h1>
+    <p>Connexion réservée à l'équipe</p>
+  </div>
+  <form id="login-form" class="login-form" autocomplete="on">
+    <div class="form-error" id="login-error"></div>
+    <div class="field">
+      <label for="login-email">Email</label>
+      <input type="email" id="login-email" required autocomplete="username" inputmode="email">
+    </div>
+    <div class="field">
+      <label for="login-password">Mot de passe</label>
+      <input type="password" id="login-password" required autocomplete="current-password">
+    </div>
+    <button type="submit" id="login-submit" class="btn-primary">Se connecter</button>
+  </form>
+  <p class="login-foot">Accès restreint à l'équipe.<br>Pas de compte&nbsp;? Contacte l'administrateur de Villa Ops.</p>
+</div>
+
+<!-- ===== APP SHELL ===== -->
+<div id="app-root" class="hidden">
+  <header>
+    <div class="header-top">
+      <div>
+        <p class="eyebrow" id="header-eyebrow">Villa Ops</p>
+        <h1 id="header-title">Journal</h1>
+      </div>
+      <button id="logout-btn" class="logout-btn" type="button">Déconnexion</button>
+    </div>
+    <div class="villa-switch" id="villa-switch"></div>
+  </header>
+
+  <div class="legend" id="legend"></div>
+
+  <div class="views-wrap">
+    <!-- JOURNAL -->
+    <div id="view-journal" class="view">
+      <div class="cat-filter" id="journal-cat-filter"></div>
+      <div id="journal-list"><div class="loading-row">Chargement…</div></div>
+    </div>
+
+    <!-- CALENDAR -->
+    <div id="view-calendar" class="view hidden">
+      <div class="cal-card">
+        <div class="cal-month">
+          <button class="cal-nav" id="cal-prev" type="button" aria-label="Mois précédent">‹</button>
+          <span id="cal-month-label">—</span>
+          <button class="cal-nav" id="cal-next" type="button" aria-label="Mois suivant">›</button>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+        <div class="day-detail" id="cal-day-detail"></div>
+      </div>
+    </div>
+
+    <!-- TASKS -->
+    <div id="view-tasks" class="view hidden">
+      <div id="tasks-list"><div class="loading-row">Chargement…</div></div>
+    </div>
+
+    <!-- VILLAS -->
+    <div id="view-villas" class="view hidden">
+      <div id="villas-list"><div class="loading-row">Chargement…</div></div>
+    </div>
+  </div>
+
+  <button class="fab" id="fab-add" type="button" aria-label="Nouvelle entrée">+</button>
+
+  <nav class="bottomnav">
+    <button class="nav-item active" data-view="journal" type="button"><div class="nav-dot"></div>Journal</button>
+    <button class="nav-item" data-view="calendar" type="button"><div class="nav-dot"></div>Calendrier</button>
+    <button class="nav-item" data-view="tasks" type="button"><div class="nav-dot"></div>Tâches<span class="nav-badge" id="tasks-badge"></span></button>
+    <button class="nav-item" data-view="villas" type="button"><div class="nav-dot"></div>Villas</button>
+  </nav>
+</div>
+
+<div id="sheet-root"></div>
+<div id="toast-root"></div>
+
+<script src="js/vendor/supabase.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
