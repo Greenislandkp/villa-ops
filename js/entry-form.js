@@ -1,5 +1,5 @@
 import { state, addCategory } from './store.js';
-import { createCategory, createEntry, createReservation, uploadEntryPhoto, updateEntryPhoto } from './data.js';
+import { createCategory, createEntry, createReservation, uploadEntryPhoto, updateEntryPhoto, deleteEntry } from './data.js';
 import { escapeHtml, todayIso, isReservationCategory, isCleaningCategory, showToast } from './utils.js';
 
 const CATEGORY_COLORS = ['#3E7C59', '#D98E04', '#B5502A', '#8B9A93', '#C99A3D', '#5B7FA6', '#8B5FBF'];
@@ -388,15 +388,22 @@ async function submitEntry(onDone) {
     if (isReservation) {
       const guestCount = document.getElementById('res-count').value;
       const amount = document.getElementById('res-amount').value;
-      await createReservation({
-        entry_id: entry.id,
-        guest_name: guestName,
-        guest_count: guestCount ? Number(guestCount) : null,
-        platform: document.getElementById('res-platform').value || null,
-        amount: amount ? Number(amount) : null,
-        currency: document.getElementById('res-currency').value.trim() || null,
-        check_out_date: document.getElementById('res-departure').value,
-      });
+      try {
+        await createReservation({
+          entry_id: entry.id,
+          guest_name: guestName,
+          guest_count: guestCount ? Number(guestCount) : null,
+          platform: document.getElementById('res-platform').value || null,
+          amount: amount ? Number(amount) : null,
+          currency: document.getElementById('res-currency').value.trim() || null,
+          check_out_date: document.getElementById('res-departure').value,
+        });
+      } catch (resErr) {
+        // Roll back the entry so we never leave an orphaned journal row
+        // without its reservation details.
+        await deleteEntry(entry).catch(() => {});
+        throw resErr;
+      }
     }
 
     if (photoFile && !isReservation) {

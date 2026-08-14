@@ -1,7 +1,8 @@
-// Service worker minimal : juste ce qu'il faut pour l'installation PWA sur
-// l'écran d'accueil + un chargement rapide de la coquille de l'app.
-// Pas de synchronisation offline des données (elles viennent de Supabase en ligne).
-const CACHE_NAME = 'villa-ops-v1';
+// Minimal service worker: just enough for the "add to home screen" PWA
+// install prompt. Network-first (not cache-first) so every deploy is
+// picked up immediately when online — the cache is only a fallback for
+// the rare offline case, never the source of truth for fresh content.
+const CACHE_NAME = 'villa-ops-v2';
 const PRECACHE_URLS = [
   './',
   './index.html',
@@ -48,22 +49,19 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   const url = new URL(request.url);
-  // On ne touche qu'aux assets statiques du même origine : Supabase, les
-  // polices et le CDN Supabase JS passent directement au réseau.
+  // Only same-origin static assets go through this: Supabase, fonts and
+  // the Supabase JS CDN go straight to the network untouched.
   if (url.origin !== self.location.origin) return;
 
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request)
-        .then((response) => {
-          if (response && response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        })
-        .catch(() => cached);
-    })
+    fetch(request)
+      .then((response) => {
+        if (response && response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(request))
   );
 });
