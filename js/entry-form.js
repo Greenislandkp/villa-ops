@@ -6,8 +6,8 @@ import {
   updateEntry,
   saveReservationForEntry,
   deleteReservationForEntry,
-  fetchLinkedCheckoutTask,
-  deleteLinkedCheckoutTask,
+  fetchLinkedTaskByCategory,
+  deleteLinkedTasks,
   uploadEntryPhoto,
   updateEntryPhoto,
   deleteEntry,
@@ -16,7 +16,8 @@ import { supabase, ENTRY_PHOTOS_BUCKET } from './supabase-client.js';
 import { escapeHtml, todayIso, isReservationCategory, isCleaningCategory, normalizeLabel, showToast, getSignedPhotoUrl } from './utils.js';
 
 const CATEGORY_COLORS = ['#3E7C59', '#D98E04', '#B5502A', '#8B9A93', '#C99A3D', '#5B7FA6', '#8B5FBF'];
-const CHECKOUT_CATEGORY_COLOR = '#8B5FBF';
+const CHECKIN_CATEGORY = { label: 'Check-in', color: '#3AA6A0' };
+const CHECKOUT_CATEGORY = { label: 'Checkout', color: '#8B5FBF' };
 
 let selectedVillaId = null;
 let selectedCategoryId = null;
@@ -354,12 +355,41 @@ function refreshCategoryUI() {
   document.getElementById('reservation-fields').classList.toggle('show', isReservation);
 }
 
-async function getOrCreateCheckoutCategory() {
-  const existing = state.categories.find((c) => normalizeLabel(c.label) === 'checkout');
+async function getOrCreateCategoryByLabel({ label, color }) {
+  const existing = state.categories.find((c) => normalizeLabel(c.label) === normalizeLabel(label));
   if (existing) return existing;
-  const cat = await createCategory({ label: 'Checkout', color: CHECKOUT_CATEGORY_COLOR });
+  const cat = await createCategory({ label, color });
   addCategory(cat);
   return cat;
+}
+
+// Creates or updates the aux task (Check-in / Checkout) linked to a
+// reservation entry via related_entry_id + category, so re-saving the
+// same stay never duplicates it.
+async function syncAuxTask({ reservationEntry, isEdit, categoryDef, titlePrefix, guestName, eventDate, time, assignedToId }) {
+  const payload = {
+    villa_id: reservationEntry.villa_id,
+    title: `${titlePrefix} — ${guestName}`,
+    assigned_to_id: assignedToId,
+    event_date: eventDate,
+    check_in_time: time || null,
+  };
+  const cat = await getOrCreateCategoryByLabel(categoryDef);
+  const existingTask = isEdit ? await fetchLinkedTaskByCategory(reservationEntry.id, cat.id) : null;
+  if (existingTask) {
+    await updateEntry(existingTask.id, payload);
+  } else {
+    await createEntry({
+      ...payload,
+      category_id: cat.id,
+      description: null,
+      author_id: state.currentTeamMember.id,
+      status: 'a_faire',
+      check_out_time: null,
+      photo_url: null,
+      related_entry_id: reservationEntry.id,
+    });
+  }
 }
 
 async function submitEntry(onDone) {
@@ -484,9 +514,9 @@ async function submitEntry(onDone) {
       }
     } else if (isEdit && editingReservation) {
       // Category was switched away from Reservation: drop the now-stale
-      // reservation row and its linked Checkout task.
+      // reservation row and its linked Check-in/Checkout tasks.
       await deleteReservationForEntry(entry.id).catch(() => {});
-      await deleteLinkedCheckoutTask(entry.id).catch(() => {});
+      await deleteLinkedTasks(entry.id).catch(() => {});
     }
 
     if (photoFile) {
@@ -498,37 +528,36 @@ async function submitEntry(onDone) {
       }
     }
 
-    // Keep the auto-generated Checkout task in sync with the stay's dates:
-    // create it on first save, update it (date/time/title/villa/assignee)
-    // on every later edit — never duplicated, since it's found via
-    // related_entry_id rather than guessed by title.
+    // Keep the auto-generated Check-in/Checkout tasks in sync with the
+    // stay's dates: created on first save, updated (date/time/title/villa/
+    // assignee) on every later edit — never duplicated, since each is
+    // found via related_entry_id + its own category rather than guessed
+    // by title.
     if (isReservation) {
+      const assignedToId = document.getElementById('entry-assignee').value || null;
       try {
-        const checkoutPayload = {
-          villa_id: entry.villa_id,
-          title: `Checkout — ${guestName}`,
-          assigned_to_id: document.getElementById('entry-assignee').value || null,
-          event_date: document.getElementById('res-departure').value,
-          check_in_time: document.getElementById('res-checkout').value || null,
-        };
-        const existingTask = isEdit ? await fetchLinkedCheckoutTask(entry.id) : null;
-        if (existingTask) {
-          await updateEntry(existingTask.id, checkoutPayload);
-        } else {
-          const checkoutCat = await getOrCreateCheckoutCategory();
-          await createEntry({
-            ...checkoutPayload,
-            category_id: checkoutCat.id,
-            description: null,
-            author_id: state.currentTeamMember.id,
-            status: 'a_faire',
-            check_out_time: null,
-            photo_url: null,
-            related_entry_id: entry.id,
-          });
-        }
+        await syncAuxTask({
+          reservationEntry: entry,
+          isEdit,
+          categoryDef: CHECKIN_CATEGORY,
+          titlePrefix: 'Reservation Check-in',
+          guestName,
+          eventDate: document.getElementById('res-arrival').value,
+          time: document.getElementById('res-checkin').value,
+          assignedToId,
+        });
+        await syncAuxTask({
+          reservationEntry: entry,
+          isEdit,
+          categoryDef: CHECKOUT_CATEGORY,
+          titlePrefix: 'Checkout',
+          guestName,
+          eventDate: document.getElementById('res-departure').value,
+          time: document.getElementById('res-checkout').value,
+          assignedToId,
+        });
       } catch (taskErr) {
-        showToast(`Reservation ${isEdit ? 'updated' : 'added'}, but the checkout task could not be synced.`);
+        showToast(`Reservation ${isEdit ? 'updated' : 'added'}, but the check-in/checkout tasks could not be synced.`);
       }
     }
 

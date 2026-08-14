@@ -124,3 +124,16 @@ export function isCleaningCategory(category) {
   const n = normalizeLabel(category.label);
   return n === 'cleaning' || n === 'menage' || n === 'housekeeping';
 }
+
+// Short tag for the small entry marker: strip a leading "Villa " prefix,
+// use the initials for a multi-word name (e.g. "Breath of Paradise" ->
+// "BOP"), or the bare word itself for a single-word name (e.g. "Nour").
+export function villaTagCode(villaName) {
+  if (!villaName) return '';
+  const cleaned = villaName.replace(/^villa\s+/i, '').trim();
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return words.map((w) => w[0]).join('').toUpperCase().slice(0, 4);
+  }
+  return (words[0] || '').toUpperCase();
+}

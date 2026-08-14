@@ -276,6 +276,13 @@ h1{
   width:9px; height:2px; background: var(--fog); opacity:0.5;
 }
 .tag .stripe{ position:absolute; right:0; top:0; bottom:0; width:6px; border-radius: 0 10px 10px 0; }
+.tag-label{
+  position:absolute; left:50%; top:50%;
+  transform: translate(-50%,-50%) rotate(-90deg);
+  font-family: var(--font-mono); font-size:9px; font-weight:700;
+  letter-spacing:0.02em; color: var(--ink); opacity:0.72;
+  white-space:nowrap;
+}
 
 .entry-body{ flex:1; min-width:0; }
 .entry-top{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }

@@ -155,18 +155,21 @@ export async function deleteReservationForEntry(entryId) {
   if (error) throw error;
 }
 
-// The auto-generated "Checkout" task tied to a reservation entry, if any.
-export async function fetchLinkedCheckoutTask(reservationEntryId) {
+// A reservation entry can have several auto-generated aux tasks linked to
+// it (Check-in, Checkout, one each) — disambiguated by category since they
+// all share the same related_entry_id.
+export async function fetchLinkedTaskByCategory(reservationEntryId, categoryId) {
   const { data, error } = await supabase
     .from('entries')
     .select(ENTRY_COLUMNS)
     .eq('related_entry_id', reservationEntryId)
+    .eq('category_id', categoryId)
     .maybeSingle();
   if (error) throw error;
   return data;
 }
 
-export async function deleteLinkedCheckoutTask(reservationEntryId) {
+export async function deleteLinkedTasks(reservationEntryId) {
   const { error } = await supabase.from('entries').delete().eq('related_entry_id', reservationEntryId);
   if (error) throw error;
 }

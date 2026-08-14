@@ -1,4 +1,4 @@
-import { escapeHtml, formatDueDate, initials, statusLabel, hexOrFallback, isReservationCategory } from './utils.js';
+import { escapeHtml, formatDueDate, initials, statusLabel, hexOrFallback, isReservationCategory, villaTagCode } from './utils.js';
 
 // ctx: { categoriesById, teamMembersById, villasById, showVilla }
 export function entryCardHtml(entry, ctx) {
@@ -20,9 +20,11 @@ export function entryCardHtml(entry, ctx) {
     .map((p, i) => (i === 0 ? p : `<span class="sep">·</span> ${p}`))
     .join(' ');
 
+  const tagCode = ctx.showVilla && villa ? villaTagCode(villa.name) : '';
+
   return `
   <div class="entry clickable" data-entry-id="${entry.id}">
-    <div class="tag"><div class="stripe" style="background:${color}"></div></div>
+    <div class="tag">${tagCode ? `<span class="tag-label">${escapeHtml(tagCode)}</span>` : ''}<div class="stripe" style="background:${color}"></div></div>
     <div class="entry-body">
       <div class="entry-top">
         <span class="entry-label" style="color:${color}">${escapeHtml(label)}</span>
