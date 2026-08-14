@@ -27,36 +27,44 @@ async function boot() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app-root').classList.remove('hidden');
 
-  let refData;
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    const [currentTeamMember, villas, categories, teamMembers] = await Promise.all([
-      loadCurrentTeamMember(user.id),
-      loadAccessibleVillas(),
-      loadCategories(),
-      loadTeamMembers(),
-    ]);
-    refData = { currentTeamMember, villas, categories, teamMembers };
-  } catch (err) {
-    showToast(err.message || 'Erreur au chargement des données.');
-    refData = { currentTeamMember: null, villas: [], categories: [], teamMembers: [] };
-  }
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Chaque requête est isolée : l'échec d'une table (ex. villas si les
+  // policies RLS bloquent) ne doit pas être confondu avec "profil absent".
+  const [teamMemberResult, villasResult, categoriesResult, teamMembersResult] = await Promise.allSettled([
+    loadCurrentTeamMember(user.id),
+    loadAccessibleVillas(),
+    loadCategories(),
+    loadTeamMembers(),
+  ]);
+
+  const errors = [];
+  if (teamMemberResult.status === 'rejected') errors.push(`team_members : ${teamMemberResult.reason.message || teamMemberResult.reason}`);
+  if (villasResult.status === 'rejected') errors.push(`villas : ${villasResult.reason.message || villasResult.reason}`);
+  if (categoriesResult.status === 'rejected') errors.push(`categories : ${categoriesResult.reason.message || categoriesResult.reason}`);
+  if (teamMembersResult.status === 'rejected') errors.push(`team_members (liste) : ${teamMembersResult.reason.message || teamMembersResult.reason}`);
+
+  const refData = {
+    currentTeamMember: teamMemberResult.status === 'fulfilled' ? teamMemberResult.value : null,
+    villas: villasResult.status === 'fulfilled' ? villasResult.value : [],
+    categories: categoriesResult.status === 'fulfilled' ? categoriesResult.value : [],
+    teamMembers: teamMembersResult.status === 'fulfilled' ? teamMembersResult.value : [],
+  };
 
   setReferenceData(refData);
 
+  if (errors.length) {
+    renderBootError(errors);
+    return;
+  }
+
   if (!state.currentTeamMember) {
     renderNoProfileState();
-    wireLogout();
     return;
   }
 
   renderVillaSwitch();
   renderLegend();
-  wireNav();
-  wireVillaSwitchClicks();
-  wireFab();
-  wireLogout();
-  wireEntryClickDelegation();
 
   await switchView('journal');
   subscribeEntries(onRealtimeChange);
@@ -69,6 +77,23 @@ function teardown() {
   document.getElementById('login-screen').classList.remove('hidden');
   document.getElementById('login-email').value = '';
   document.getElementById('login-password').value = '';
+}
+
+function renderBootError(errors) {
+  document.getElementById('villa-switch').innerHTML = '';
+  document.getElementById('legend').innerHTML = '';
+  document.getElementById('header-title').textContent = 'Villa Ops';
+  document.getElementById('header-eyebrow').textContent = 'Erreur de chargement';
+  document.querySelector('.views-wrap').innerHTML = `
+    <div class="view">
+      <div class="empty-state" style="padding-top:40px; text-align:left;">
+        <b style="text-align:center; display:block;">Erreur au chargement des données</b>
+        <p style="margin:14px 0 6px;">Le détail technique ci-dessous aide à diagnostiquer le souci (policy RLS, table, etc.) :</p>
+        <pre style="white-space:pre-wrap; background:var(--ink-2); border:1px solid var(--line); border-radius:10px; padding:12px; font-family:var(--font-mono); font-size:11.5px; color:#E8A088;">${escapeHtml(errors.join('\n'))}</pre>
+      </div>
+    </div>`;
+  document.getElementById('fab-add').classList.add('hidden');
+  document.querySelector('nav.bottomnav').classList.add('hidden');
 }
 
 function renderNoProfileState() {
@@ -192,6 +217,11 @@ function onRealtimeChange() {
 
 async function init() {
   wireLoginForm();
+  wireNav();
+  wireVillaSwitchClicks();
+  wireFab();
+  wireLogout();
+  wireEntryClickDelegation();
 
   const session = await getSession();
   if (session) {
