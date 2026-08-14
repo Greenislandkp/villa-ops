@@ -144,3 +144,12 @@ export function villaTagCode(villaName) {
   }
   return (words[0] || '').toUpperCase();
 }
+
+// Client-side sort by assignee (initials), unassigned entries pushed last.
+export function sortEntriesByAssignee(entries, teamMembersById) {
+  const label = (e) => {
+    if (!e.assigned_to_id) return '￿';
+    return memberInitials(teamMembersById.get(e.assigned_to_id));
+  };
+  return [...entries].sort((a, b) => label(a).localeCompare(label(b)));
+}

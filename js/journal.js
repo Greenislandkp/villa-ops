@@ -1,16 +1,17 @@
 import { fetchJournalEntries } from './data.js';
-import { state, entryContext } from './store.js';
+import { state, entryContext, getReservationCategory } from './store.js';
 import { entryCardHtml } from './entry-card.js';
-import { escapeHtml } from './utils.js';
+import { escapeHtml, sortEntriesByAssignee } from './utils.js';
 
 let categoryFilter = 'all';
-let sortBy = 'added'; // 'added' (created_at, default feed order) or 'due' (event_date)
+let sortBy = 'added'; // 'due' (event_date), 'assignee' (initials), 'added' (created_at, default feed order)
 
 function renderSortToggle() {
   const box = document.getElementById('journal-sort-toggle');
   box.innerHTML = `
-    <button class="cat-chip${sortBy === 'added' ? ' active' : ''}" data-sort="added">Date added</button>
     <button class="cat-chip${sortBy === 'due' ? ' active' : ''}" data-sort="due">Due date</button>
+    <button class="cat-chip${sortBy === 'assignee' ? ' active' : ''}" data-sort="assignee">Assigned</button>
+    <button class="cat-chip${sortBy === 'added' ? ' active' : ''}" data-sort="added">Date added</button>
   `;
   box.querySelectorAll('[data-sort]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -24,7 +25,8 @@ function renderSortToggle() {
 function renderCatFilter() {
   const box = document.getElementById('journal-cat-filter');
   const chips = [`<button class="cat-chip${categoryFilter === 'all' ? ' active' : ''}" data-cat="all">All</button>`];
-  state.categories.forEach((c) => {
+  // Reservations have their own tab now and never appear in the Journal.
+  state.categories.filter((c) => c.id !== reservationCategoryId()).forEach((c) => {
     chips.push(
       `<button class="cat-chip${categoryFilter === c.id ? ' active' : ''}" data-cat="${c.id}"><span class="dot" style="background:${c.color || '#8B9A93'}"></span>${escapeHtml(c.label)}</button>`
     );
@@ -39,11 +41,22 @@ function renderCatFilter() {
   });
 }
 
+function reservationCategoryId() {
+  const cat = getReservationCategory();
+  return cat ? cat.id : null;
+}
+
 async function renderList() {
   const list = document.getElementById('journal-list');
   list.innerHTML = '<div class="loading-row">Loading…</div>';
   try {
-    const entries = await fetchJournalEntries({ villaId: state.selectedVillaId, categoryId: categoryFilter, sortBy });
+    let entries = await fetchJournalEntries({
+      villaId: state.selectedVillaId,
+      categoryId: categoryFilter,
+      sortBy: sortBy === 'assignee' ? 'due' : sortBy,
+      excludeCategoryId: reservationCategoryId(),
+    });
+    if (sortBy === 'assignee') entries = sortEntriesByAssignee(entries, state.teamMembersById);
     if (!entries.length) {
       list.innerHTML = `<div class="empty-state"><b>Nothing to show</b>No entries for this selection. Tap + to add one.</div>`;
       return;

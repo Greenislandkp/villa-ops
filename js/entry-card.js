@@ -20,7 +20,7 @@ export function entryCardHtml(entry, ctx) {
     .map((p, i) => (i === 0 ? p : `<span class="sep">·</span> ${p}`))
     .join(' ');
 
-  const tagCode = ctx.showVilla && villa ? villaTagCode(villa.name) : '';
+  const tagCode = villa ? villaTagCode(villa.name) : '';
 
   return `
   <div class="entry clickable" data-entry-id="${entry.id}">

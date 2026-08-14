@@ -1,9 +1,9 @@
 import { fetchTaskEntries } from './data.js';
 import { state, entryContext, getReservationCategory } from './store.js';
 import { entryCardHtml } from './entry-card.js';
-import { escapeHtml } from './utils.js';
+import { escapeHtml, sortEntriesByAssignee } from './utils.js';
 
-let sortBy = 'due'; // 'due' (event_date, default) or 'added' (created_at)
+let sortBy = 'due'; // 'due' (event_date, default), 'assignee' (initials), 'added' (created_at)
 
 function reservationCategoryId() {
   const cat = getReservationCategory();
@@ -14,6 +14,7 @@ function renderSortToggle() {
   const box = document.getElementById('tasks-sort-toggle');
   box.innerHTML = `
     <button class="cat-chip${sortBy === 'due' ? ' active' : ''}" data-sort="due">Due date</button>
+    <button class="cat-chip${sortBy === 'assignee' ? ' active' : ''}" data-sort="assignee">Assigned</button>
     <button class="cat-chip${sortBy === 'added' ? ' active' : ''}" data-sort="added">Date added</button>
   `;
   box.querySelectorAll('[data-sort]').forEach((btn) => {
@@ -30,7 +31,12 @@ export async function renderTasks() {
   const list = document.getElementById('tasks-list');
   list.innerHTML = '<div class="loading-row">Loading…</div>';
   try {
-    const entries = await fetchTaskEntries({ villaId: state.selectedVillaId, excludeCategoryId: reservationCategoryId(), sortBy });
+    let entries = await fetchTaskEntries({
+      villaId: state.selectedVillaId,
+      excludeCategoryId: reservationCategoryId(),
+      sortBy: sortBy === 'assignee' ? 'due' : sortBy,
+    });
+    if (sortBy === 'assignee') entries = sortEntriesByAssignee(entries, state.teamMembersById);
     updateTasksBadge(entries.length);
     if (!entries.length) {
       list.innerHTML = `<div class="empty-state"><b>No tasks in progress</b>Everything is up to date for this selection.</div>`;

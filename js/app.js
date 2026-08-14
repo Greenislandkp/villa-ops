@@ -5,6 +5,7 @@ import { state, setReferenceData } from './store.js';
 import { renderJournal, refreshJournalIfActive } from './journal.js';
 import { renderCalendar, refreshCalendarIfActive } from './calendar.js';
 import { renderTasks, refreshTasksIfActive } from './tasks.js';
+import { renderReservations, refreshReservationsIfActive } from './reservations.js';
 import { renderVillas } from './villas.js';
 import { openEntryForm } from './entry-form.js';
 import { openEntryDetail } from './entry-detail.js';
@@ -15,6 +16,7 @@ const VIEW_TITLES = {
   journal: 'Journal',
   calendar: 'Calendar',
   tasks: 'Tasks in progress',
+  reservations: 'Reservations',
   villas: 'Villas',
 };
 
@@ -170,6 +172,7 @@ async function switchView(view) {
   if (view === 'journal') await renderJournal();
   else if (view === 'calendar') await renderCalendar();
   else if (view === 'tasks') await renderTasks();
+  else if (view === 'reservations') await renderReservations();
   else if (view === 'villas') await renderVillas();
 }
 
@@ -178,6 +181,7 @@ function refreshCurrentView() {
     case 'journal': return refreshJournalIfActive();
     case 'calendar': return refreshCalendarIfActive();
     case 'tasks': return refreshTasksIfActive();
+    case 'reservations': return refreshReservationsIfActive();
     case 'villas': return renderVillas();
     default: return undefined;
   }

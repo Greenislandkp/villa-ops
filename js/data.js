@@ -10,10 +10,11 @@ const ENTRY_COLUMNS = 'id, villa_id, category_id, title, description, author_id,
 
 // sortBy: 'due' (event_date) or 'added' (created_at) — default 'added' to
 // keep the classic chronological feed unless the caller asks otherwise.
-export async function fetchJournalEntries({ villaId, categoryId, sortBy = 'added', limit = 100 }) {
+export async function fetchJournalEntries({ villaId, categoryId, sortBy = 'added', excludeCategoryId, limit = 100 }) {
   let q = supabase.from('entries').select(ENTRY_COLUMNS).limit(limit);
   if (villaId && villaId !== 'all') q = q.eq('villa_id', villaId);
   if (categoryId && categoryId !== 'all') q = q.eq('category_id', categoryId);
+  if (excludeCategoryId) q = q.neq('category_id', excludeCategoryId);
   q = sortBy === 'due'
     ? q.order('event_date', { ascending: true }).order('created_at', { ascending: false })
     : q.order('created_at', { ascending: false });
@@ -36,6 +37,21 @@ export async function fetchTaskEntries({ villaId, excludeCategoryId, sortBy = 'd
   q = sortBy === 'added'
     ? q.order('created_at', { ascending: false })
     : q.order('event_date', { ascending: true }).order('created_at', { ascending: false });
+  const { data, error } = await q;
+  if (error) throw error;
+  return data || [];
+}
+
+// Report list for the dedicated Reservations tab — entries of the
+// Reservation category, sorted by arrival date (soonest first).
+export async function fetchReservationEntries({ villaId, categoryId, limit = 200 }) {
+  let q = supabase
+    .from('entries')
+    .select(ENTRY_COLUMNS)
+    .eq('category_id', categoryId)
+    .order('event_date', { ascending: true })
+    .limit(limit);
+  if (villaId && villaId !== 'all') q = q.eq('villa_id', villaId);
   const { data, error } = await q;
   if (error) throw error;
   return data || [];
