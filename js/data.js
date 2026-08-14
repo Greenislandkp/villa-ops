@@ -6,7 +6,7 @@
 // filtered by RLS policies anyway.
 import { supabase, ENTRY_PHOTOS_BUCKET } from './supabase-client.js';
 
-const ENTRY_COLUMNS = 'id, villa_id, category_id, title, description, author_id, assigned_to_id, status, event_date, check_in_time, check_out_time, photo_url, created_at, updated_at';
+const ENTRY_COLUMNS = 'id, villa_id, category_id, title, description, author_id, assigned_to_id, status, event_date, check_in_time, check_out_time, photo_url, related_entry_id, created_at, updated_at';
 
 // sortBy: 'due' (event_date) or 'added' (created_at) — default 'added' to
 // keep the classic chronological feed unless the caller asks otherwise.
@@ -155,6 +155,22 @@ export async function deleteReservationForEntry(entryId) {
   if (error) throw error;
 }
 
+// The auto-generated "Checkout" task tied to a reservation entry, if any.
+export async function fetchLinkedCheckoutTask(reservationEntryId) {
+  const { data, error } = await supabase
+    .from('entries')
+    .select(ENTRY_COLUMNS)
+    .eq('related_entry_id', reservationEntryId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteLinkedCheckoutTask(reservationEntryId) {
+  const { error } = await supabase.from('entries').delete().eq('related_entry_id', reservationEntryId);
+  if (error) throw error;
+}
+
 export async function updateEntryPhoto(entryId, photoPath) {
   const { error } = await supabase.from('entries').update({ photo_url: photoPath }).eq('id', entryId);
   if (error) throw error;
@@ -181,6 +197,7 @@ export async function uploadEntryPhoto(villaId, entryId, file) {
 // membres full_access côté UI (entry-detail.js) — non appliqué ici.
 export async function deleteEntry(entry) {
   await supabase.from('reservations').delete().eq('entry_id', entry.id);
+  await supabase.from('entries').delete().eq('related_entry_id', entry.id); // linked Checkout task, if any
   if (entry.photo_url) {
     try {
       await supabase.storage.from(ENTRY_PHOTOS_BUCKET).remove([entry.photo_url]);

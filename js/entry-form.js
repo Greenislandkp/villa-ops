@@ -6,6 +6,8 @@ import {
   updateEntry,
   saveReservationForEntry,
   deleteReservationForEntry,
+  fetchLinkedCheckoutTask,
+  deleteLinkedCheckoutTask,
   uploadEntryPhoto,
   updateEntryPhoto,
   deleteEntry,
@@ -481,8 +483,10 @@ async function submitEntry(onDone) {
         throw resErr;
       }
     } else if (isEdit && editingReservation) {
-      // Category was switched away from Reservation: drop the now-stale row.
+      // Category was switched away from Reservation: drop the now-stale
+      // reservation row and its linked Checkout task.
       await deleteReservationForEntry(entry.id).catch(() => {});
+      await deleteLinkedCheckoutTask(entry.id).catch(() => {});
     }
 
     if (photoFile) {
@@ -494,26 +498,37 @@ async function submitEntry(onDone) {
       }
     }
 
-    // Auto-generate a Checkout task on the departure date — creation only,
-    // to avoid duplicating it on every subsequent edit of the same stay.
-    if (isReservation && !isEdit) {
+    // Keep the auto-generated Checkout task in sync with the stay's dates:
+    // create it on first save, update it (date/time/title/villa/assignee)
+    // on every later edit — never duplicated, since it's found via
+    // related_entry_id rather than guessed by title.
+    if (isReservation) {
       try {
-        const checkoutCat = await getOrCreateCheckoutCategory();
-        await createEntry({
-          villa_id: selectedVillaId,
-          category_id: checkoutCat.id,
+        const checkoutPayload = {
+          villa_id: entry.villa_id,
           title: `Checkout — ${guestName}`,
-          description: null,
-          author_id: state.currentTeamMember.id,
           assigned_to_id: document.getElementById('entry-assignee').value || null,
-          status: 'a_faire',
           event_date: document.getElementById('res-departure').value,
           check_in_time: document.getElementById('res-checkout').value || null,
-          check_out_time: null,
-          photo_url: null,
-        });
+        };
+        const existingTask = isEdit ? await fetchLinkedCheckoutTask(entry.id) : null;
+        if (existingTask) {
+          await updateEntry(existingTask.id, checkoutPayload);
+        } else {
+          const checkoutCat = await getOrCreateCheckoutCategory();
+          await createEntry({
+            ...checkoutPayload,
+            category_id: checkoutCat.id,
+            description: null,
+            author_id: state.currentTeamMember.id,
+            status: 'a_faire',
+            check_out_time: null,
+            photo_url: null,
+            related_entry_id: entry.id,
+          });
+        }
       } catch (taskErr) {
-        showToast('Reservation added, but the checkout task could not be created.');
+        showToast(`Reservation ${isEdit ? 'updated' : 'added'}, but the checkout task could not be synced.`);
       }
     }
 
