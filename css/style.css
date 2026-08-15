@@ -240,11 +240,13 @@ h1{
 .cal-day.today{ box-shadow: inset 0 0 0 1.5px var(--ink); font-weight:700; }
 .cal-day.selected{ background: rgba(22,35,31,0.1); }
 .cal-day.clickable{ cursor:pointer; }
-.cal-day .bars{
-  position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
-  display:flex; gap:2px; width:70%; justify-content:center;
+.cal-day .day-bars{
+  position:absolute; left:0; right:0; bottom:3px;
+  display:flex; flex-direction:column; align-items:center; gap:2px;
 }
-.cal-day .bar{ height:4px; border-radius:3px; flex:1; max-width:16px; }
+.cal-day .span-bar{ width:100%; height:4px; flex-shrink:0; }
+.cal-day .bars{ display:flex; gap:2px; width:70%; justify-content:center; }
+.cal-day .bar{ height:3px; border-radius:2px; flex:1; max-width:14px; }
 
 .day-detail{ margin-top: 22px; }
 .day-detail h3{

@@ -71,9 +71,37 @@ async function loadStaySpans(monthStart, monthEnd) {
     const reservation = resMap.get(entry.id) || null;
     const departure = (reservation && reservation.check_out_date) || entry.event_date;
     if (departure < monthStart) return; // stay entirely before the visible month
-    spans.push({ entry, reservation, arrival: entry.event_date, departure, color: hexOrFallback(reservationCat.color) });
+    spans.push({ entry, reservation, arrival: entry.event_date, departure });
   });
   return spans;
+}
+
+// Resolve the Check-in / Reservation / Checkout category colors once, with
+// sane fallbacks in case one of the auto-provisioned categories is missing.
+function stayColors() {
+  const reservationCat = getReservationCategory();
+  const checkinCat = getCategoryByLabel('Check-in');
+  const checkoutCat = getCategoryByLabel('Checkout');
+  return {
+    stay: hexOrFallback(reservationCat && reservationCat.color, '#3E7C59'),
+    checkin: hexOrFallback(checkinCat && checkinCat.color, '#3AA6A0'),
+    checkout: hexOrFallback(checkoutCat && checkoutCat.color, '#8B5FBF'),
+  };
+}
+
+// One continuous bar per stay, spanning arrival -> departure within a
+// week row: rounded + tinted teal at check-in, rounded + tinted purple
+// at check-out, square-edged reservation green in between, so adjacent
+// days visually connect into a single line instead of separate dashes.
+function spanSegmentStyle(span, dateIso, colors) {
+  const isStart = dateIso === span.arrival;
+  const isEnd = dateIso === span.departure;
+  if (isStart && isEnd) {
+    return { background: `linear-gradient(90deg, ${colors.checkin} 50%, ${colors.checkout} 50%)`, radius: '3px' };
+  }
+  if (isStart) return { background: colors.checkin, radius: '3px 0 0 3px' };
+  if (isEnd) return { background: colors.checkout, radius: '0 3px 3px 0' };
+  return { background: colors.stay, radius: '0' };
 }
 
 function renderGrid() {
@@ -98,23 +126,30 @@ function renderGrid() {
   }
 
   const todayIsoStr = isoDate(new Date());
+  const colors = stayColors();
   for (let day = 1; day <= daysInMonth; day++) {
     const dateIso = isoDate(new Date(viewYear, viewMonth, day));
     const dayEntries = byDate.get(dateIso) || [];
-    const daySpans = bySpanDate.get(dateIso) || [];
-    const colors = [
-      ...new Set([
-        ...daySpans.map((s) => s.color),
-        ...dayEntries.map((e) => hexOrFallback(state.categoriesById.get(e.category_id)?.color)),
-      ]),
-    ].slice(0, 4);
-    const barsHtml = colors.length
-      ? `<div class="bars">${colors.map((c) => `<div class="bar" style="background:${c}"></div>`).join('')}</div>`
+    const daySpans = (bySpanDate.get(dateIso) || []).slice(0, 2); // cap simultaneous stays
+
+    const spanBarsHtml = daySpans
+      .map((span) => {
+        const seg = spanSegmentStyle(span, dateIso, colors);
+        return `<div class="span-bar" style="background:${seg.background}; border-radius:${seg.radius};"></div>`;
+      })
+      .join('');
+
+    const entryColors = [...new Set(dayEntries.map((e) => hexOrFallback(state.categoriesById.get(e.category_id)?.color)))].slice(0, 4);
+    const entryBarsHtml = entryColors.length
+      ? `<div class="bars">${entryColors.map((c) => `<div class="bar" style="background:${c}"></div>`).join('')}</div>`
       : '';
+
+    const dayBarsHtml = spanBarsHtml || entryBarsHtml ? `<div class="day-bars">${spanBarsHtml}${entryBarsHtml}</div>` : '';
+
     const classes = ['cal-day', 'clickable'];
     if (dateIso === todayIsoStr) classes.push('today');
     if (dateIso === selectedDate) classes.push('selected');
-    cells.push(`<div class="${classes.join(' ')}" data-date="${dateIso}">${day}${barsHtml}</div>`);
+    cells.push(`<div class="${classes.join(' ')}" data-date="${dateIso}">${day}${dayBarsHtml}</div>`);
   }
 
   const totalCells = leadingBlank + daysInMonth;
