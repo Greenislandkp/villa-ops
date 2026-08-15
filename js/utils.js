@@ -168,7 +168,7 @@ export function assigneeFilterChipsHtml(teamMembers, current) {
   ];
   teamMembers.forEach((m) => {
     chips.push(
-      `<button class="cat-chip${current === m.id ? ' active' : ''}" data-assignee="${m.id}"><span class="avatar" style="width:14px;height:14px;font-size:7px;">${escapeHtml(memberInitials(m))}</span>${escapeHtml(m.full_name)}</button>`
+      `<button class="cat-chip${current === m.id ? ' active' : ''}" data-assignee="${m.id}" title="${escapeHtml(m.full_name)}"><span class="avatar" style="width:16px;height:16px;font-size:8.5px;">${escapeHtml(memberInitials(m))}</span></button>`
     );
   });
   return chips.join('');
