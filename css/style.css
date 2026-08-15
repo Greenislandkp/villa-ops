@@ -149,11 +149,14 @@ h1{
   letter-spacing: -0.01em;
 }
 .header-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.header-actions{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
 .logout-btn{
   font-family: var(--font-mono); font-size:10.5px; text-transform:uppercase;
   letter-spacing:0.06em; color: var(--fog); border:1px solid var(--line);
   border-radius:999px; padding:7px 12px; white-space:nowrap; margin-top:2px;
 }
+.header-actions .logout-btn{ margin-top:0; }
+#notif-toggle-btn.active{ color: var(--brass); border-color: rgba(201,154,61,0.4); }
 
 .villa-switch{
   display:flex; gap:8px; overflow-x:auto; padding-bottom:4px;

@@ -8,6 +8,25 @@ import { supabase, ENTRY_PHOTOS_BUCKET } from './supabase-client.js';
 
 const ENTRY_COLUMNS = 'id, villa_id, category_id, title, description, author_id, assigned_to_id, status, event_date, check_in_time, check_out_time, photo_url, related_entry_id, created_at, updated_at';
 
+export async function savePushSubscription(teamMemberId, subscriptionJson) {
+  const { endpoint, keys } = subscriptionJson;
+  const { error } = await supabase.from('push_subscriptions').upsert(
+    {
+      team_member_id: teamMemberId,
+      endpoint,
+      p256dh: keys.p256dh,
+      auth: keys.auth,
+    },
+    { onConflict: 'endpoint' }
+  );
+  if (error) throw error;
+}
+
+export async function deletePushSubscription(endpoint) {
+  const { error } = await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint);
+  if (error) throw error;
+}
+
 // sortBy: 'due' (event_date) or 'added' (created_at) — default 'added' to
 // keep the classic chronological feed unless the caller asks otherwise.
 export async function fetchJournalEntries({ villaId, categoryId, sortBy = 'added', excludeCategoryId, limit = 100 }) {

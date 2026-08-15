@@ -11,6 +11,7 @@ import { openEntryForm } from './entry-form.js';
 import { openEntryDetail } from './entry-detail.js';
 import { subscribeEntries, unsubscribeEntries } from './realtime.js';
 import { markSheetOpened, syncSheetFlag } from './nav-history.js';
+import { isPushSupported, getCurrentSubscription, subscribeToPush, unsubscribeFromPush } from './push.js';
 import { escapeHtml, showToast } from './utils.js';
 
 const VIEW_TITLES = {
@@ -68,6 +69,7 @@ async function boot() {
 
   renderVillaSwitch();
   renderLegend();
+  refreshNotifButtonState();
 
   await switchView('journal', false);
   history.replaceState({ type: 'view', view: 'journal' }, '');
@@ -97,6 +99,7 @@ function renderBootError(errors) {
       </div>
     </div>`;
   document.getElementById('fab-add').classList.add('hidden');
+  document.getElementById('notif-toggle-btn').classList.add('hidden');
   document.querySelector('nav.bottomnav').classList.add('hidden');
 }
 
@@ -114,6 +117,7 @@ function renderNoProfileState() {
       </div>
     </div>`;
   document.getElementById('fab-add').classList.add('hidden');
+  document.getElementById('notif-toggle-btn').classList.add('hidden');
   document.querySelector('nav.bottomnav').classList.add('hidden');
 }
 
@@ -202,6 +206,33 @@ function wireFab() {
   });
 }
 
+function wireNotifToggle() {
+  const btn = document.getElementById('notif-toggle-btn');
+  if (!isPushSupported()) {
+    btn.classList.add('hidden');
+    return;
+  }
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    const subscription = await getCurrentSubscription();
+    if (subscription) {
+      await unsubscribeFromPush();
+    } else if (state.currentTeamMember) {
+      await subscribeToPush(state.currentTeamMember.id);
+    }
+    btn.disabled = false;
+    refreshNotifButtonState();
+  });
+}
+
+async function refreshNotifButtonState() {
+  const btn = document.getElementById('notif-toggle-btn');
+  if (!btn || btn.classList.contains('hidden')) return;
+  const subscription = await getCurrentSubscription();
+  btn.classList.toggle('active', !!subscription);
+  btn.textContent = subscription ? '🔔 Notifications on' : '🔔 Enable notifications';
+}
+
 function wireLogout() {
   document.getElementById('logout-btn').addEventListener('click', async () => {
     await signOut();
@@ -250,6 +281,7 @@ async function init() {
   wireVillaSwitchClicks();
   wireFab();
   wireLogout();
+  wireNotifToggle();
   wireEntryClickDelegation();
   wirePopstate();
 

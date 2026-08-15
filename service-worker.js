@@ -2,7 +2,7 @@
 // install prompt. Network-first (not cache-first) so every deploy is
 // picked up immediately when online — the cache is only a fallback for
 // the rare offline case, never the source of truth for fresh content.
-const CACHE_NAME = 'villa-ops-v2';
+const CACHE_NAME = 'villa-ops-v3';
 const PRECACHE_URLS = [
   './',
   './index.html',
@@ -20,8 +20,11 @@ const PRECACHE_URLS = [
   './js/journal.js',
   './js/calendar.js',
   './js/tasks.js',
+  './js/reservations.js',
   './js/villas.js',
   './js/realtime.js',
+  './js/nav-history.js',
+  './js/push.js',
   './js/supabase-client.js',
   './js/vendor/supabase.js',
   './icons/icon-192.png',
@@ -63,5 +66,36 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => caches.match(request))
+  );
+});
+
+// Daily task-notification payload: { title, body, url }
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (_) {
+    /* ignore malformed payloads */
+  }
+  const title = data.title || 'Villa Ops';
+  const options = {
+    body: data.body || '',
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    data: { url: data.url || './index.html' },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || './index.html';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) return client.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
+    })
   );
 });
