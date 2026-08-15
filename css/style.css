@@ -251,11 +251,11 @@ h1{
   font-family: var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:0.1em;
   color: var(--brass); margin: 0 0 10px;
 }
-.slot{ display:flex; gap:10px; align-items:flex-start; padding: 10px 0; border-top: 1px solid var(--line); }
+.slot{ display:flex; gap:10px; align-items:flex-start; padding: 10px 0; border-top: 1px solid rgba(22,35,31,0.1); }
 .slot:first-of-type{ border-top:none; }
 .slot-time{ font-family: var(--font-mono); font-size:12px; color: var(--brass); min-width:44px; padding-top:1px; }
-.slot-text b{ color: var(--paper-2); font-size:13.5px; display:block; font-weight:600; }
-.slot-text span{ color: var(--fog); font-size:12px; }
+.slot-text b{ color: var(--ink); font-size:13.5px; display:block; font-weight:600; }
+.slot-text span{ color: rgba(22,35,31,0.6); font-size:12px; }
 
 /* ===== JOURNAL VIEW / shared entry component ===== */
 .entry{ display:flex; gap:12px; padding: 14px 0; border-top: 1px solid var(--line); }

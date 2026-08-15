@@ -4,7 +4,7 @@ import { entryCardHtml } from './entry-card.js';
 import { escapeHtml, sortEntriesByAssignee } from './utils.js';
 
 let categoryFilter = 'all';
-let sortBy = 'added'; // 'due' (event_date), 'assignee' (initials), 'added' (created_at, default feed order)
+let sortBy = 'due'; // 'due' (event_date, default), 'assignee' (initials), 'added' (created_at)
 
 function renderSortToggle() {
   const box = document.getElementById('journal-sort-toggle');

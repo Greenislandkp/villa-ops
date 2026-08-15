@@ -3,8 +3,17 @@ import { fetchEntryById, fetchReservationsForEntries, updateEntryStatus, deleteE
 import { supabase, ENTRY_PHOTOS_BUCKET } from './supabase-client.js';
 import { escapeHtml, formatEntryTimestamp, formatDueDate, formatDateShort, statusLabel, hexOrFallback, getSignedPhotoUrl, isReservationCategory, memberInitials, showToast } from './utils.js';
 import { openEntryForm } from './entry-form.js';
+import { markSheetClosed } from './nav-history.js';
 
 function closeSheet() {
+  document.getElementById('sheet-root').innerHTML = '';
+  markSheetClosed();
+}
+
+// Swaps the sheet content to the edit form without popping the history
+// entry — it's still the same "sheet" step from the back button's
+// perspective, just showing different content now.
+function softCloseForEdit() {
   document.getElementById('sheet-root').innerHTML = '';
 }
 
@@ -18,7 +27,7 @@ export async function openEntryDetail(entryId, onChanged) {
   try {
     entry = await fetchEntryById(entryId);
   } catch (err) {
-    document.getElementById('sheet-root').innerHTML = '';
+    closeSheet();
     return;
   }
   if (!entry) { closeSheet(); return; }
@@ -116,7 +125,7 @@ function renderDetail(entry, reservation, photoUrl, onChanged) {
   }
 
   document.getElementById('detail-edit').addEventListener('click', () => {
-    closeSheet();
+    softCloseForEdit();
     openEntryForm(onChanged, entry, reservation);
   });
 

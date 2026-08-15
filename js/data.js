@@ -57,7 +57,7 @@ export async function fetchReservationEntries({ villaId, categoryId, limit = 200
   return data || [];
 }
 
-export async function fetchEntriesForMonth({ villaId, startIso, endIso, excludeCategoryId }) {
+export async function fetchEntriesForMonth({ villaId, startIso, endIso, excludeCategoryIds }) {
   let q = supabase
     .from('entries')
     .select(ENTRY_COLUMNS)
@@ -65,7 +65,7 @@ export async function fetchEntriesForMonth({ villaId, startIso, endIso, excludeC
     .lte('event_date', endIso)
     .order('event_date', { ascending: true });
   if (villaId && villaId !== 'all') q = q.eq('villa_id', villaId);
-  if (excludeCategoryId) q = q.neq('category_id', excludeCategoryId);
+  (excludeCategoryIds || []).forEach((id) => { q = q.neq('category_id', id); });
   const { data, error } = await q;
   if (error) throw error;
   return data || [];

@@ -10,6 +10,7 @@ import { renderVillas } from './villas.js';
 import { openEntryForm } from './entry-form.js';
 import { openEntryDetail } from './entry-detail.js';
 import { subscribeEntries, unsubscribeEntries } from './realtime.js';
+import { markSheetOpened, syncSheetFlag } from './nav-history.js';
 import { escapeHtml, showToast } from './utils.js';
 
 const VIEW_TITLES = {
@@ -68,7 +69,8 @@ async function boot() {
   renderVillaSwitch();
   renderLegend();
 
-  await switchView('journal');
+  await switchView('journal', false);
+  history.replaceState({ type: 'view', view: 'journal' }, '');
   subscribeEntries(onRealtimeChange);
 }
 
@@ -159,7 +161,10 @@ function wireNav() {
   });
 }
 
-async function switchView(view) {
+async function switchView(view, push = true) {
+  if (push && view !== state.currentView) {
+    history.pushState({ type: 'view', view }, '');
+  }
   state.currentView = view;
   document.querySelectorAll('.view').forEach((el) => el.classList.add('hidden'));
   const target = document.getElementById(`view-${view}`);
@@ -189,6 +194,7 @@ function refreshCurrentView() {
 
 function wireFab() {
   document.getElementById('fab-add').addEventListener('click', () => {
+    markSheetOpened();
     openEntryForm(() => {
       refreshCurrentView();
       refreshTasksIfActive();
@@ -207,10 +213,29 @@ function wireEntryClickDelegation() {
     const el = e.target.closest('[data-entry-id]');
     if (!el) return;
     if (!el.classList.contains('entry') && !el.classList.contains('slot')) return;
+    markSheetOpened();
     openEntryDetail(el.dataset.entryId, () => {
       refreshCurrentView();
       refreshTasksIfActive();
     });
+  });
+}
+
+// Makes the phone's back button close an open sheet or return to the
+// previous tab instead of leaving the PWA — see nav-history.js.
+function wirePopstate() {
+  window.addEventListener('popstate', (e) => {
+    const sheetRoot = document.getElementById('sheet-root');
+    if (sheetRoot.innerHTML.trim() !== '') {
+      sheetRoot.innerHTML = '';
+      syncSheetFlag(false);
+      return;
+    }
+    syncSheetFlag(false);
+    const st = e.state;
+    if (st && st.type === 'view' && st.view) {
+      switchView(st.view, false);
+    }
   });
 }
 
@@ -226,6 +251,7 @@ async function init() {
   wireFab();
   wireLogout();
   wireEntryClickDelegation();
+  wirePopstate();
 
   const session = await getSession();
   if (session) {

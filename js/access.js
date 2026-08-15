@@ -19,6 +19,7 @@ export async function loadAccessibleVillas() {
   const { data, error } = await supabase
     .from('villas')
     .select('*')
+    .order('display_order', { ascending: true, nullsFirst: false })
     .order('name', { ascending: true });
   if (error) throw error;
   return data || [];

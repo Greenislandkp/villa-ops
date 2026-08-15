@@ -13,6 +13,7 @@ import {
   deleteEntry,
 } from './data.js';
 import { supabase, ENTRY_PHOTOS_BUCKET } from './supabase-client.js';
+import { markSheetClosed } from './nav-history.js';
 import { escapeHtml, todayIso, isReservationCategory, isCleaningCategory, normalizeLabel, showToast, getSignedPhotoUrl, memberInitials } from './utils.js';
 
 const CATEGORY_COLORS = ['#3E7C59', '#D98E04', '#B5502A', '#8B9A93', '#C99A3D', '#5B7FA6', '#8B5FBF'];
@@ -32,6 +33,7 @@ function closeSheet() {
   photoFile = null;
   editingEntry = null;
   editingReservation = null;
+  markSheetClosed();
 }
 
 // Pass `entry` (+ its `reservation` row, if any) to edit an existing entry
@@ -167,10 +169,11 @@ function renderSheet() {
             <label for="clean-time">Time (optional)</label>
             <input type="time" id="clean-time" value="${defaultCleanTime}">
           </div>
-          <div class="field">
-            <label for="entry-assignee">Assigned to</label>
-            <select id="entry-assignee" class="field-select">${assigneeOptionsHtml(editingEntry ? editingEntry.assigned_to_id : null)}</select>
-          </div>
+        </div>
+
+        <div class="field">
+          <label for="entry-assignee">Assigned to</label>
+          <select id="entry-assignee" class="field-select">${assigneeOptionsHtml(editingEntry ? editingEntry.assigned_to_id : null)}</select>
         </div>
 
         <div class="field${isReservation ? ' hidden' : ''}" id="status-field">

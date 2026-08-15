@@ -1,7 +1,7 @@
 // Minimal shared state between views (reference data + active villa
 // selection). Each view keeps its own UI-only state (category filter,
 // calendar month...) locally in its own module.
-import { isReservationCategory } from './utils.js';
+import { isReservationCategory, normalizeLabel } from './utils.js';
 
 export const state = {
   session: null,
@@ -42,6 +42,11 @@ export function entryContext(showVilla = true) {
 
 export function getReservationCategory() {
   return state.categories.find((c) => isReservationCategory(c)) || null;
+}
+
+export function getCategoryByLabel(label) {
+  const n = normalizeLabel(label);
+  return state.categories.find((c) => normalizeLabel(c.label) === n) || null;
 }
 
 export function isAdmin() {

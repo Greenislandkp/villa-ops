@@ -1,5 +1,5 @@
 import { fetchEntriesForMonth, fetchReservationEntriesNear, fetchReservationsForEntries } from './data.js';
-import { state, getReservationCategory } from './store.js';
+import { state, getReservationCategory, getCategoryByLabel } from './store.js';
 import { escapeHtml, formatMonthLabel, isoDate, formatDateLong, hexOrFallback } from './utils.js';
 
 const today = new Date();
@@ -190,9 +190,15 @@ async function loadAndRender() {
   grid.innerHTML = '<div class="loading-row">Loading…</div>';
   try {
     const { startIso, endIso } = monthBounds(viewYear, viewMonth);
-    const reservationCat = getReservationCategory();
+    // Reservation stays are already fully represented via the day-span
+    // logic below (check-in/staying/check-out) — excluding all three
+    // related categories from the regular per-day bucket avoids showing
+    // the same stay twice on its check-in/check-out day.
+    const excludeCategoryIds = [getReservationCategory(), getCategoryByLabel('Check-in'), getCategoryByLabel('Checkout')]
+      .filter(Boolean)
+      .map((c) => c.id);
     const [entries, spans] = await Promise.all([
-      fetchEntriesForMonth({ villaId: state.selectedVillaId, startIso, endIso, excludeCategoryId: reservationCat ? reservationCat.id : null }),
+      fetchEntriesForMonth({ villaId: state.selectedVillaId, startIso, endIso, excludeCategoryIds }),
       loadStaySpans(startIso, endIso),
     ]);
     monthEntries = entries;
