@@ -90,17 +90,23 @@ function stayColors() {
 }
 
 // One continuous bar per stay, spanning arrival -> departure within a
-// week row: rounded + tinted teal at check-in, rounded + tinted purple
-// at check-out, square-edged reservation green in between, so adjacent
-// days visually connect into a single line instead of separate dashes.
+// week row. The reservation green never breaks: on the check-in day the
+// guest only holds the room half the day, so that day is half teal/half
+// green (green touching the next day's bar); check-out mirrors that
+// with half green/half purple. Middle "staying" days are plain green,
+// square-edged so they connect seamlessly to their neighbours.
 function spanSegmentStyle(span, dateIso, colors) {
   const isStart = dateIso === span.arrival;
   const isEnd = dateIso === span.departure;
   if (isStart && isEnd) {
-    return { background: `linear-gradient(90deg, ${colors.checkin} 50%, ${colors.checkout} 50%)`, radius: '3px' };
+    return { background: `linear-gradient(90deg, ${colors.checkin} 50%, ${colors.checkout} 50%)`, radius: '1px' };
   }
-  if (isStart) return { background: colors.checkin, radius: '3px 0 0 3px' };
-  if (isEnd) return { background: colors.checkout, radius: '0 3px 3px 0' };
+  if (isStart) {
+    return { background: `linear-gradient(90deg, ${colors.checkin} 50%, ${colors.stay} 50%)`, radius: '1px 0 0 1px' };
+  }
+  if (isEnd) {
+    return { background: `linear-gradient(90deg, ${colors.stay} 50%, ${colors.checkout} 50%)`, radius: '0 1px 1px 0' };
+  }
   return { background: colors.stay, radius: '0' };
 }
 
@@ -130,7 +136,7 @@ function renderGrid() {
   for (let day = 1; day <= daysInMonth; day++) {
     const dateIso = isoDate(new Date(viewYear, viewMonth, day));
     const dayEntries = byDate.get(dateIso) || [];
-    const daySpans = (bySpanDate.get(dateIso) || []).slice(0, 2); // cap simultaneous stays
+    const daySpans = (bySpanDate.get(dateIso) || []).slice(0, 5); // cap simultaneous stays (max villa count)
 
     const spanBarsHtml = daySpans
       .map((span) => {
