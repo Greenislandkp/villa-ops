@@ -153,3 +153,23 @@ export function sortEntriesByAssignee(entries, teamMembersById) {
   };
   return [...entries].sort((a, b) => label(a).localeCompare(label(b)));
 }
+
+// assigneeFilter: 'all', 'unassigned', or a team_member id.
+export function filterEntriesByAssignee(entries, assigneeFilter) {
+  if (assigneeFilter === 'all') return entries;
+  if (assigneeFilter === 'unassigned') return entries.filter((e) => !e.assigned_to_id);
+  return entries.filter((e) => e.assigned_to_id === assigneeFilter);
+}
+
+export function assigneeFilterChipsHtml(teamMembers, current) {
+  const chips = [
+    `<button class="cat-chip${current === 'all' ? ' active' : ''}" data-assignee="all">All</button>`,
+    `<button class="cat-chip${current === 'unassigned' ? ' active' : ''}" data-assignee="unassigned">Unassigned</button>`,
+  ];
+  teamMembers.forEach((m) => {
+    chips.push(
+      `<button class="cat-chip${current === m.id ? ' active' : ''}" data-assignee="${m.id}"><span class="avatar" style="width:14px;height:14px;font-size:7px;">${escapeHtml(memberInitials(m))}</span>${escapeHtml(m.full_name)}</button>`
+    );
+  });
+  return chips.join('');
+}

@@ -5,7 +5,7 @@ import { escapeHtml, formatDateShort, memberInitials, hexOrFallback, villaTagCod
 function reservationCardHtml(entry, reservation, ctx) {
   const cat = ctx.categoriesById.get(entry.category_id);
   const color = hexOrFallback(cat && cat.color);
-  const author = ctx.teamMembersById.get(entry.author_id);
+  const assigned = entry.assigned_to_id ? ctx.teamMembersById.get(entry.assigned_to_id) : null;
   const villa = ctx.villasById.get(entry.villa_id);
   const tagCode = villa ? villaTagCode(villa.name) : '';
 
@@ -13,13 +13,13 @@ function reservationCardHtml(entry, reservation, ctx) {
   const departure = reservation && reservation.check_out_date ? formatDateShort(reservation.check_out_date) : '—';
 
   const metaParts = [];
-  metaParts.push(`<span class="avatar">${escapeHtml(memberInitials(author))}</span>${escapeHtml((author && author.full_name) || 'Unknown')}`);
   if (ctx.showVilla && villa) metaParts.push(escapeHtml(villa.name));
   if (reservation && reservation.guest_count) metaParts.push(`${reservation.guest_count} guests`);
   if (reservation && reservation.platform) metaParts.push(escapeHtml(reservation.platform));
   if (entry.check_in_time) metaParts.push(`<span style="font-family:var(--font-mono)">In ${escapeHtml(entry.check_in_time.slice(0, 5))}</span>`);
   if (entry.check_out_time) metaParts.push(`<span style="font-family:var(--font-mono)">Out ${escapeHtml(entry.check_out_time.slice(0, 5))}</span>`);
   if (reservation && reservation.amount) metaParts.push(`${reservation.amount} ${reservation.currency || ''}`.trim());
+  if (assigned) metaParts.push(`<span class="avatar" title="${escapeHtml(assigned.full_name)}">${escapeHtml(memberInitials(assigned))}</span>`);
 
   const metaHtml = metaParts.map((p, i) => (i === 0 ? p : `<span class="sep">·</span> ${p}`)).join(' ');
   const guestName = (reservation && reservation.guest_name) || entry.title;

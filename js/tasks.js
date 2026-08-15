@@ -1,9 +1,10 @@
 import { fetchTaskEntries } from './data.js';
 import { state, entryContext, getReservationCategory } from './store.js';
 import { entryCardHtml } from './entry-card.js';
-import { escapeHtml, sortEntriesByAssignee } from './utils.js';
+import { escapeHtml, sortEntriesByAssignee, filterEntriesByAssignee, assigneeFilterChipsHtml } from './utils.js';
 
 let sortBy = 'due'; // 'due' (event_date, default), 'assignee' (initials), 'added' (created_at)
+let assigneeFilter = 'all'; // only meaningful when sortBy === 'assignee'
 
 function reservationCategoryId() {
   const cat = getReservationCategory();
@@ -20,7 +21,23 @@ function renderSortToggle() {
   box.querySelectorAll('[data-sort]').forEach((btn) => {
     btn.addEventListener('click', () => {
       sortBy = btn.dataset.sort;
+      if (sortBy !== 'assignee') assigneeFilter = 'all';
       renderSortToggle();
+      renderAssigneeFilter();
+      renderTasks();
+    });
+  });
+}
+
+function renderAssigneeFilter() {
+  const box = document.getElementById('tasks-assignee-filter');
+  box.classList.toggle('hidden', sortBy !== 'assignee');
+  if (sortBy !== 'assignee') return;
+  box.innerHTML = assigneeFilterChipsHtml(state.teamMembers, assigneeFilter);
+  box.querySelectorAll('[data-assignee]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      assigneeFilter = btn.dataset.assignee;
+      renderAssigneeFilter();
       renderTasks();
     });
   });
@@ -28,6 +45,7 @@ function renderSortToggle() {
 
 export async function renderTasks() {
   renderSortToggle();
+  renderAssigneeFilter();
   const list = document.getElementById('tasks-list');
   list.innerHTML = '<div class="loading-row">Loading…</div>';
   try {
@@ -36,8 +54,11 @@ export async function renderTasks() {
       excludeCategoryId: reservationCategoryId(),
       sortBy: sortBy === 'assignee' ? 'due' : sortBy,
     });
-    if (sortBy === 'assignee') entries = sortEntriesByAssignee(entries, state.teamMembersById);
-    updateTasksBadge(entries.length);
+    updateTasksBadge(entries.length); // total, unaffected by the assignee sub-filter
+    if (sortBy === 'assignee') {
+      entries = filterEntriesByAssignee(entries, assigneeFilter);
+      entries = sortEntriesByAssignee(entries, state.teamMembersById);
+    }
     if (!entries.length) {
       list.innerHTML = `<div class="empty-state"><b>No tasks in progress</b>Everything is up to date for this selection.</div>`;
       return;

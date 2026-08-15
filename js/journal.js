@@ -1,10 +1,11 @@
 import { fetchJournalEntries } from './data.js';
 import { state, entryContext, getReservationCategory } from './store.js';
 import { entryCardHtml } from './entry-card.js';
-import { escapeHtml, sortEntriesByAssignee } from './utils.js';
+import { escapeHtml, sortEntriesByAssignee, filterEntriesByAssignee, assigneeFilterChipsHtml } from './utils.js';
 
 let categoryFilter = 'all';
 let sortBy = 'due'; // 'due' (event_date, default), 'assignee' (initials), 'added' (created_at)
+let assigneeFilter = 'all'; // only meaningful when sortBy === 'assignee'
 
 function renderSortToggle() {
   const box = document.getElementById('journal-sort-toggle');
@@ -16,7 +17,23 @@ function renderSortToggle() {
   box.querySelectorAll('[data-sort]').forEach((btn) => {
     btn.addEventListener('click', () => {
       sortBy = btn.dataset.sort;
+      if (sortBy !== 'assignee') assigneeFilter = 'all';
       renderSortToggle();
+      renderAssigneeFilter();
+      renderList();
+    });
+  });
+}
+
+function renderAssigneeFilter() {
+  const box = document.getElementById('journal-assignee-filter');
+  box.classList.toggle('hidden', sortBy !== 'assignee');
+  if (sortBy !== 'assignee') return;
+  box.innerHTML = assigneeFilterChipsHtml(state.teamMembers, assigneeFilter);
+  box.querySelectorAll('[data-assignee]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      assigneeFilter = btn.dataset.assignee;
+      renderAssigneeFilter();
       renderList();
     });
   });
@@ -56,7 +73,10 @@ async function renderList() {
       sortBy: sortBy === 'assignee' ? 'due' : sortBy,
       excludeCategoryId: reservationCategoryId(),
     });
-    if (sortBy === 'assignee') entries = sortEntriesByAssignee(entries, state.teamMembersById);
+    if (sortBy === 'assignee') {
+      entries = filterEntriesByAssignee(entries, assigneeFilter);
+      entries = sortEntriesByAssignee(entries, state.teamMembersById);
+    }
     if (!entries.length) {
       list.innerHTML = `<div class="empty-state"><b>Nothing to show</b>No entries for this selection. Tap + to add one.</div>`;
       return;
@@ -71,6 +91,7 @@ async function renderList() {
 
 export async function renderJournal() {
   renderSortToggle();
+  renderAssigneeFilter();
   renderCatFilter();
   await renderList();
 }

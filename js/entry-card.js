@@ -4,17 +4,15 @@ import { escapeHtml, formatDueDate, memberInitials, statusLabel, hexOrFallback, 
 export function entryCardHtml(entry, ctx) {
   const cat = ctx.categoriesById.get(entry.category_id);
   const color = hexOrFallback(cat && cat.color);
-  const author = ctx.teamMembersById.get(entry.author_id);
   const assigned = entry.assigned_to_id ? ctx.teamMembersById.get(entry.assigned_to_id) : null;
   const villa = ctx.villasById.get(entry.villa_id);
   const label = cat ? cat.label : 'Other';
   const isReservation = isReservationCategory(cat);
 
   const metaParts = [];
-  metaParts.push(`<span class="avatar">${escapeHtml(memberInitials(author))}</span>${escapeHtml((author && author.full_name) || 'Unknown')}`);
   if (ctx.showVilla && villa) metaParts.push(escapeHtml(villa.name));
   if (entry.check_in_time) metaParts.push(`<span style="font-family:var(--font-mono)">${escapeHtml(entry.check_in_time.slice(0, 5))}</span>`);
-  if (assigned) metaParts.push(`→ ${escapeHtml(assigned.full_name)}`);
+  if (assigned) metaParts.push(`<span class="avatar" title="${escapeHtml(assigned.full_name)}">${escapeHtml(memberInitials(assigned))}</span>`);
 
   const metaHtml = metaParts
     .map((p, i) => (i === 0 ? p : `<span class="sep">·</span> ${p}`))
