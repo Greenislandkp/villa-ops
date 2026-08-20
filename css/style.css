@@ -265,18 +265,20 @@ h1{
   color: rgba(22,35,31,0.45); letter-spacing:0.06em; padding-bottom:4px;
 }
 .cal-day{
-  position:relative; aspect-ratio: 1; display:flex; align-items:flex-start; justify-content:center;
-  padding-top:8px;
+  position:relative; min-height:42px;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+  padding:6px 0 4px;
   font-family: var(--font-body); font-size: 12.5px; font-weight:500;
   border-radius: 9px; color: rgba(22,35,31,0.75);
 }
+.cal-day-num{ flex-shrink:0; line-height:1; }
 .cal-day.muted{ color: rgba(22,35,31,0.28); }
 .cal-day.today{ box-shadow: inset 0 0 0 1.5px var(--ink); font-weight:700; }
 .cal-day.selected{ background: rgba(22,35,31,0.1); }
 .cal-day.clickable{ cursor:pointer; }
 .cal-day .day-bars{
-  position:absolute; left:0; right:0; bottom:2px;
   display:flex; flex-direction:column; align-items:center; gap:1px;
+  width:100%; margin-top:4px; flex-shrink:0;
 }
 .cal-day .span-bar{ width:100%; height:2px; flex-shrink:0; }
 .cal-day .bars{ display:flex; gap:2px; width:70%; justify-content:center; }

@@ -286,7 +286,7 @@ function renderGrid() {
     const classes = ['cal-day', 'clickable'];
     if (dateIso === todayIsoStr) classes.push('today');
     if (dateIso === selectedDate) classes.push('selected');
-    cells.push(`<div class="${classes.join(' ')}" data-date="${dateIso}">${day}${dayBarsHtml}</div>`);
+    cells.push(`<div class="${classes.join(' ')}" data-date="${dateIso}"><span class="cal-day-num">${day}</span>${dayBarsHtml}</div>`);
   }
 
   const totalCells = leadingBlank + daysInMonth;
