@@ -68,7 +68,7 @@ async function renderList() {
   list.innerHTML = '<div class="loading-row">Loading…</div>';
   try {
     let entries = await fetchJournalEntries({
-      villaId: state.selectedVillaId,
+      villaIds: state.selectedVillaIds,
       categoryId: categoryFilter,
       sortBy: sortBy === 'assignee' ? 'due' : sortBy,
       excludeCategoryId: reservationCategoryId(),
@@ -81,7 +81,7 @@ async function renderList() {
       list.innerHTML = `<div class="empty-state"><b>Nothing to show</b>No entries for this selection. Tap + to add one.</div>`;
       return;
     }
-    const showVilla = state.selectedVillaId === 'all';
+    const showVilla = state.selectedVillaIds.length > 1;
     const ctx = entryContext(showVilla);
     list.innerHTML = entries.map((e) => entryCardHtml(e, ctx)).join('');
   } catch (err) {

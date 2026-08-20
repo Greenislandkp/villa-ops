@@ -57,7 +57,7 @@ export function openEntryForm(onDone, entry = null, reservation = null) {
     selectedCategoryId = entry.category_id;
     selectedStatus = entry.status || 'todo';
   } else {
-    selectedVillaId = state.selectedVillaId !== 'all' ? state.selectedVillaId : state.villas[0].id;
+    selectedVillaId = state.selectedVillaIds.length === 1 ? state.selectedVillaIds[0] : state.villas[0].id;
     selectedCategoryId = state.categories[0] ? state.categories[0].id : null;
     selectedStatus = 'todo';
   }

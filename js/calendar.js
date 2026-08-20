@@ -10,7 +10,6 @@ let monthEntries = []; // non-reservation entries, single-day
 let staySpans = []; // reservation stays: { entry, reservation, arrival, departure }
 let wired = false;
 let calMode = 'full'; // 'full' (everything) or 'resa' (reservations only, colored by villa)
-let calVillaIds = null; // Set of villa ids narrowed within "All villas"; null = not narrowed yet
 
 function wireNav() {
   if (wired) return;
@@ -34,44 +33,6 @@ function wireNav() {
       renderDayDetail();
     });
   });
-  document.getElementById('cal-villa-filter').addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-villa-id]');
-    if (!btn) return;
-    const id = btn.dataset.villaId;
-    if (calVillaIds.has(id)) {
-      if (calVillaIds.size === 1) return; // always keep at least one villa selected
-      calVillaIds.delete(id);
-    } else {
-      calVillaIds.add(id);
-    }
-    loadAndRender();
-  });
-}
-
-// When the global villa-switch picks a single villa, the calendar just
-// follows it. Only in "All villas" does the calendar's own multi-select
-// (chip row) come into play, defaulting to every accessible villa.
-function effectiveVillaIds() {
-  if (state.selectedVillaId !== 'all') return [state.selectedVillaId];
-  if (!calVillaIds) calVillaIds = new Set(state.villas.map((v) => v.id));
-  return [...calVillaIds];
-}
-
-function renderVillaFilterChips() {
-  const box = document.getElementById('cal-villa-filter');
-  if (!box) return;
-  if (state.selectedVillaId !== 'all' || state.villas.length < 2) {
-    box.classList.add('hidden');
-    return;
-  }
-  box.classList.remove('hidden');
-  box.innerHTML = state.villas
-    .map((v) => {
-      const active = calVillaIds && calVillaIds.has(v.id);
-      const color = hexOrFallback(v.color, '#8B9A93');
-      return `<button type="button" class="cal-villa-chip${active ? ' active' : ''}" data-villa-id="${v.id}" style="${active ? `background:${color};border-color:${color};` : ''}">${escapeHtml(v.name)}</button>`;
-    })
-    .join('');
 }
 
 function monthBounds(year, month) {
@@ -108,7 +69,7 @@ async function loadStaySpans(monthStart, monthEnd) {
   const reservationCat = getReservationCategory();
   if (!reservationCat) return [];
   const resEntries = await fetchReservationEntriesNear({
-    villaIds: effectiveVillaIds(),
+    villaIds: state.selectedVillaIds,
     categoryId: reservationCat.id,
     rangeStart: monthStart,
     rangeEnd: monthEnd,
@@ -200,7 +161,7 @@ function renderResaLegend() {
   if (!box) return;
   box.classList.toggle('active', calMode === 'resa');
   if (calMode !== 'resa') { box.innerHTML = ''; return; }
-  const shownIds = new Set(effectiveVillaIds());
+  const shownIds = new Set(state.selectedVillaIds);
   box.innerHTML = state.villas
     .filter((v) => shownIds.has(v.id))
     .map((v) => `<div class="legend-item"><span class="dot" style="background:${hexOrFallback(v.color, '#8B9A93')}"></span>${escapeHtml(v.name)}</div>`)
@@ -211,7 +172,6 @@ function renderGrid() {
   const grid = document.getElementById('cal-grid');
   document.getElementById('cal-month-label').textContent = formatMonthLabel(viewYear, viewMonth);
   renderResaLegend();
-  renderVillaFilterChips();
 
   const { startIso, endIso } = monthBounds(viewYear, viewMonth);
   const byDate = entriesByDate();
@@ -373,7 +333,7 @@ async function loadAndRender() {
       .filter(Boolean)
       .map((c) => c.id);
     const [entries, spans] = await Promise.all([
-      fetchEntriesForMonth({ villaIds: effectiveVillaIds(), startIso, endIso, excludeCategoryIds }),
+      fetchEntriesForMonth({ villaIds: state.selectedVillaIds, startIso, endIso, excludeCategoryIds }),
       loadStaySpans(startIso, endIso),
     ]);
     monthEntries = entries;

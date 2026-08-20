@@ -50,7 +50,7 @@ export async function renderTasks() {
   list.innerHTML = '<div class="loading-row">Loading…</div>';
   try {
     let entries = await fetchTaskEntries({
-      villaId: state.selectedVillaId,
+      villaIds: state.selectedVillaIds,
       excludeCategoryId: reservationCategoryId(),
       sortBy: sortBy === 'assignee' ? 'due' : sortBy,
     });
@@ -63,7 +63,7 @@ export async function renderTasks() {
       list.innerHTML = `<div class="empty-state"><b>No tasks in progress</b>Everything is up to date for this selection.</div>`;
       return;
     }
-    const showVilla = state.selectedVillaId === 'all';
+    const showVilla = state.selectedVillaIds.length > 1;
     const ctx = entryContext(showVilla);
     list.innerHTML = entries.map((e) => entryCardHtml(e, ctx)).join('');
   } catch (err) {
@@ -73,7 +73,7 @@ export async function renderTasks() {
 
 export async function updateTasksBadgeCount() {
   try {
-    const entries = await fetchTaskEntries({ villaId: state.selectedVillaId, excludeCategoryId: reservationCategoryId() });
+    const entries = await fetchTaskEntries({ villaIds: state.selectedVillaIds, excludeCategoryId: reservationCategoryId() });
     updateTasksBadge(entries.length);
   } catch (_) {
     /* silent: the badge is only indicative */

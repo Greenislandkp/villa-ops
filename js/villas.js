@@ -11,16 +11,22 @@ export async function renderVillas() {
     return;
   }
 
+  const shownVillas = state.villas.filter((v) => state.selectedVillaIds.includes(v.id));
+  if (!shownVillas.length) {
+    list.innerHTML = `<div class="empty-state"><b>No villa selected</b>Pick at least one villa in the filter above.</div>`;
+    return;
+  }
+
   try {
     const reservationCat = getReservationCategory();
-    const entries = await fetchRecentEntriesForVillas(state.villas.map((v) => v.id));
+    const entries = await fetchRecentEntriesForVillas(shownVillas.map((v) => v.id));
     const byVilla = new Map();
-    state.villas.forEach((v) => byVilla.set(v.id, []));
+    shownVillas.forEach((v) => byVilla.set(v.id, []));
     entries.forEach((e) => {
       if (byVilla.has(e.villa_id)) byVilla.get(e.villa_id).push(e);
     });
 
-    const cards = state.villas.map((villa) => {
+    const cards = shownVillas.map((villa) => {
       const villaEntries = byVilla.get(villa.id) || [];
       const openCount = villaEntries.filter(
         (e) => (e.status === 'todo' || e.status === 'in_progress') && (!reservationCat || e.category_id !== reservationCat.id)

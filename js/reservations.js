@@ -51,7 +51,7 @@ export async function renderReservations() {
   }
 
   try {
-    const entries = await fetchReservationEntries({ villaId: state.selectedVillaId, categoryId: cat.id });
+    const entries = await fetchReservationEntries({ villaIds: state.selectedVillaIds, categoryId: cat.id });
     if (!entries.length) {
       list.innerHTML = `<div class="empty-state"><b>No reservations</b>No reservations for this selection. Tap + to add one.</div>`;
       return;
@@ -61,7 +61,7 @@ export async function renderReservations() {
       categoriesById: state.categoriesById,
       teamMembersById: state.teamMembersById,
       villasById: state.villasById,
-      showVilla: state.selectedVillaId === 'all',
+      showVilla: state.selectedVillaIds.length > 1,
     };
     list.innerHTML = entries.map((e) => reservationCardHtml(e, reservationsMap.get(e.id), ctx)).join('');
   } catch (err) {

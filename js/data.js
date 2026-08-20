@@ -29,9 +29,9 @@ export async function deletePushSubscription(endpoint) {
 
 // sortBy: 'due' (event_date) or 'added' (created_at) — default 'added' to
 // keep the classic chronological feed unless the caller asks otherwise.
-export async function fetchJournalEntries({ villaId, categoryId, sortBy = 'added', excludeCategoryId, limit = 100 }) {
+export async function fetchJournalEntries({ villaIds, categoryId, sortBy = 'added', excludeCategoryId, limit = 100 }) {
   let q = supabase.from('entries').select(ENTRY_COLUMNS).limit(limit);
-  if (villaId && villaId !== 'all') q = q.eq('villa_id', villaId);
+  if (villaIds && villaIds.length) q = q.in('villa_id', villaIds);
   if (categoryId && categoryId !== 'all') q = q.eq('category_id', categoryId);
   if (excludeCategoryId) q = q.neq('category_id', excludeCategoryId);
   q = sortBy === 'due'
@@ -45,13 +45,13 @@ export async function fetchJournalEntries({ villaId, categoryId, sortBy = 'added
 // excludeCategoryId: reservations aren't "tasks" (no meaningful to-do/in
 // progress/done for a stay), so excluded regardless of their real status.
 // sortBy: 'due' (event_date, default) or 'added' (created_at).
-export async function fetchTaskEntries({ villaId, excludeCategoryId, sortBy = 'due', limit = 200 }) {
+export async function fetchTaskEntries({ villaIds, excludeCategoryId, sortBy = 'due', limit = 200 }) {
   let q = supabase
     .from('entries')
     .select(ENTRY_COLUMNS)
     .in('status', ['todo', 'in_progress'])
     .limit(limit);
-  if (villaId && villaId !== 'all') q = q.eq('villa_id', villaId);
+  if (villaIds && villaIds.length) q = q.in('villa_id', villaIds);
   if (excludeCategoryId) q = q.neq('category_id', excludeCategoryId);
   q = sortBy === 'added'
     ? q.order('created_at', { ascending: false })
@@ -63,14 +63,14 @@ export async function fetchTaskEntries({ villaId, excludeCategoryId, sortBy = 'd
 
 // Report list for the dedicated Reservations tab — entries of the
 // Reservation category, sorted by arrival date (soonest first).
-export async function fetchReservationEntries({ villaId, categoryId, limit = 200 }) {
+export async function fetchReservationEntries({ villaIds, categoryId, limit = 200 }) {
   let q = supabase
     .from('entries')
     .select(ENTRY_COLUMNS)
     .eq('category_id', categoryId)
     .order('event_date', { ascending: true })
     .limit(limit);
-  if (villaId && villaId !== 'all') q = q.eq('villa_id', villaId);
+  if (villaIds && villaIds.length) q = q.in('villa_id', villaIds);
   const { data, error } = await q;
   if (error) throw error;
   return data || [];

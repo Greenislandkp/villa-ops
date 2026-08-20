@@ -1,7 +1,7 @@
 import { supabase } from './supabase-client.js';
 import { getSession, onAuthStateChange, signOut, wireLoginForm } from './auth.js';
 import { loadCurrentTeamMember, loadAccessibleVillas, loadTeamMembers, loadCategories } from './access.js';
-import { state, setReferenceData } from './store.js';
+import { state, setReferenceData, allVillasSelected } from './store.js';
 import { renderJournal, refreshJournalIfActive } from './journal.js';
 import { renderCalendar, refreshCalendarIfActive } from './calendar.js';
 import { renderTasks, refreshTasksIfActive } from './tasks.js';
@@ -12,7 +12,7 @@ import { openEntryDetail } from './entry-detail.js';
 import { subscribeEntries, unsubscribeEntries } from './realtime.js';
 import { markSheetOpened, syncSheetFlag } from './nav-history.js';
 import { isPushSupported, getCurrentSubscription, subscribeToPush, unsubscribeFromPush } from './push.js';
-import { escapeHtml, showToast } from './utils.js';
+import { escapeHtml, showToast, hexOrFallback } from './utils.js';
 
 const VIEW_TITLES = {
   journal: 'Journal',
@@ -123,19 +123,35 @@ function renderNoProfileState() {
 
 function renderVillaSwitch() {
   const box = document.getElementById('villa-switch');
-  const chips = [`<button type="button" class="villa-chip${state.selectedVillaId === 'all' ? ' active' : ''}" data-villa="all">All villas</button>`];
+  const allActive = allVillasSelected();
+  const chips = [`<button type="button" class="villa-chip${allActive ? ' active' : ''}" data-villa="all">All villas</button>`];
   state.villas.forEach((v) => {
-    chips.push(`<button type="button" class="villa-chip${state.selectedVillaId === v.id ? ' active' : ''}" data-villa="${v.id}">${escapeHtml(v.name)}</button>`);
+    const active = state.selectedVillaIds.includes(v.id);
+    const color = hexOrFallback(v.color, '#8B9A93');
+    chips.push(
+      `<button type="button" class="villa-chip${active ? ' active' : ''}" data-villa="${v.id}" style="${active ? `background:${color};border-color:${color};` : ''}">${escapeHtml(v.name)}</button>`
+    );
   });
   box.innerHTML = chips.join('');
 }
 
+// Single, multi-select villa filter driving every view (Journal, Tasks,
+// Reservations, Villas, both calendar modes) — no per-view duplicate.
 function wireVillaSwitchClicks() {
   document.getElementById('villa-switch').addEventListener('click', (e) => {
     const btn = e.target.closest('[data-villa]');
     if (!btn) return;
-    state.selectedVillaId = btn.dataset.villa;
-    document.querySelectorAll('#villa-switch .villa-chip').forEach((c) => c.classList.toggle('active', c === btn));
+    const id = btn.dataset.villa;
+    if (id === 'all') {
+      state.selectedVillaIds = state.villas.map((v) => v.id);
+    } else if (state.selectedVillaIds.includes(id)) {
+      if (state.selectedVillaIds.length > 1) {
+        state.selectedVillaIds = state.selectedVillaIds.filter((vid) => vid !== id);
+      } // else: keep at least one villa selected, ignore
+    } else {
+      state.selectedVillaIds = [...state.selectedVillaIds, id];
+    }
+    renderVillaSwitch();
     updateHeaderEyebrow();
     refreshCurrentView();
     refreshTasksIfActive();
@@ -151,11 +167,13 @@ function renderLegend() {
 
 function updateHeaderEyebrow() {
   const eyebrow = document.getElementById('header-eyebrow');
-  if (state.selectedVillaId === 'all') {
+  if (allVillasSelected()) {
     eyebrow.textContent = 'All villas';
-  } else {
-    const villa = state.villasById.get(state.selectedVillaId);
+  } else if (state.selectedVillaIds.length === 1) {
+    const villa = state.villasById.get(state.selectedVillaIds[0]);
     eyebrow.textContent = villa ? villa.name : 'Villa Ops';
+  } else {
+    eyebrow.textContent = `${state.selectedVillaIds.length} villas selected`;
   }
 }
 

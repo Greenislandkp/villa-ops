@@ -12,7 +12,7 @@ export const state = {
   categoriesById: new Map(),
   teamMembers: [],
   teamMembersById: new Map(),
-  selectedVillaId: 'all', // 'all' or uuid
+  selectedVillaIds: [], // ids of currently selected villas — all accessible villas by default
   currentView: 'journal',
 };
 
@@ -24,6 +24,11 @@ export function setReferenceData({ villas, categories, teamMembers, currentTeamM
   state.teamMembers = teamMembers;
   state.teamMembersById = new Map(teamMembers.map((m) => [m.id, m]));
   state.currentTeamMember = currentTeamMember;
+  state.selectedVillaIds = villas.map((v) => v.id);
+}
+
+export function allVillasSelected() {
+  return state.selectedVillaIds.length === state.villas.length;
 }
 
 export function addCategory(category) {
