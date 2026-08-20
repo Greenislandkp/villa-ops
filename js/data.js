@@ -76,14 +76,16 @@ export async function fetchReservationEntries({ villaId, categoryId, limit = 200
   return data || [];
 }
 
-export async function fetchEntriesForMonth({ villaId, startIso, endIso, excludeCategoryIds }) {
+// villaIds: array of villa ids to restrict to, or falsy/empty for no
+// villa filter at all (RLS still scopes the result to accessible villas).
+export async function fetchEntriesForMonth({ villaIds, startIso, endIso, excludeCategoryIds }) {
   let q = supabase
     .from('entries')
     .select(ENTRY_COLUMNS)
     .gte('event_date', startIso)
     .lte('event_date', endIso)
     .order('event_date', { ascending: true });
-  if (villaId && villaId !== 'all') q = q.eq('villa_id', villaId);
+  if (villaIds && villaIds.length) q = q.in('villa_id', villaIds);
   (excludeCategoryIds || []).forEach((id) => { q = q.neq('category_id', id); });
   const { data, error } = await q;
   if (error) throw error;
@@ -94,7 +96,7 @@ export async function fetchEntriesForMonth({ villaId, startIso, endIso, excludeC
 // (up to `maxStayDays` before the range start) since check_out_date lives
 // on `reservations`, not on `entries` — can't filter precisely server-side
 // without embedding.
-export async function fetchReservationEntriesNear({ villaId, categoryId, rangeStart, rangeEnd, maxStayDays = 60 }) {
+export async function fetchReservationEntriesNear({ villaIds, categoryId, rangeStart, rangeEnd, maxStayDays = 60 }) {
   const earliest = new Date(rangeStart);
   earliest.setDate(earliest.getDate() - maxStayDays);
   const earliestIso = earliest.toISOString().slice(0, 10);
@@ -105,7 +107,7 @@ export async function fetchReservationEntriesNear({ villaId, categoryId, rangeSt
     .eq('category_id', categoryId)
     .gte('event_date', earliestIso)
     .lte('event_date', rangeEnd);
-  if (villaId && villaId !== 'all') q = q.eq('villa_id', villaId);
+  if (villaIds && villaIds.length) q = q.in('villa_id', villaIds);
   const { data, error } = await q;
   if (error) throw error;
   return data || [];
