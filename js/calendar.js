@@ -122,7 +122,28 @@ async function loadStaySpans(monthStart, monthEnd) {
     if (departure < monthStart) return; // stay entirely before the visible month
     spans.push({ entry, reservation, arrival: entry.event_date, departure });
   });
+  assignLanes(spans);
   return spans;
+}
+
+// Gives every stay a fixed "lane" (like a Gantt chart track) for its whole
+// duration, so the same reservation never jumps to a different row just
+// because some other stay started or ended nearby. Greedy interval
+// scheduling: sort by arrival, drop each span into the first lane whose
+// last-used stay has already ended by this one's arrival.
+function assignLanes(spans) {
+  spans.sort((a, b) => (a.arrival < b.arrival ? -1 : a.arrival > b.arrival ? 1 : a.departure < b.departure ? -1 : 1));
+  const laneEndDates = [];
+  spans.forEach((span) => {
+    let lane = laneEndDates.findIndex((endDate) => endDate < span.arrival);
+    if (lane === -1) {
+      lane = laneEndDates.length;
+      laneEndDates.push(span.departure);
+    } else {
+      laneEndDates[lane] = span.departure;
+    }
+    span.lane = lane;
+  });
 }
 
 // Resolve the Check-in / Reservation / Checkout category colors once, with
@@ -211,25 +232,35 @@ function renderGrid() {
 
   const todayIsoStr = isoDate(new Date());
   const colors = stayColors();
+  // Fixed number of stacking rows for the whole grid, so a stay's bar sits
+  // at the same lane (same visual row) on every day of its duration —
+  // never shifting just because some other stay started or ended nearby.
+  const maxLanes = Math.min(staySpans.length ? Math.max(...staySpans.map((s) => s.lane)) + 1 : 0, 5);
+
   for (let day = 1; day <= daysInMonth; day++) {
     const dateIso = isoDate(new Date(viewYear, viewMonth, day));
     const dayEntries = byDate.get(dateIso) || [];
-    const daySpans = (bySpanDate.get(dateIso) || []).slice(0, 5); // cap simultaneous stays (max villa count)
+    const daySpansActive = bySpanDate.get(dateIso) || [];
+    const laneMap = new Map(daySpansActive.map((s) => [s.lane, s]));
+    const laneSlots = [];
+    for (let lane = 0; lane < maxLanes; lane++) laneSlots.push(laneMap.get(lane) || null);
 
     let dayBarsHtml = '';
     if (calMode === 'resa') {
       // Reservations only: one thicker, villa-colored bar per active stay,
       // nothing else on the day cell.
-      const spanBarsHtml = daySpans
+      const spanBarsHtml = laneSlots
         .map((span) => {
+          if (!span) return '<div class="span-bar wide" style="visibility:hidden;"></div>';
           const seg = villaSpanSegmentStyle(span, dateIso);
           return `<div class="span-bar wide" style="background:${seg.background}; border-radius:${seg.radius};"></div>`;
         })
         .join('');
       dayBarsHtml = spanBarsHtml ? `<div class="day-bars resa">${spanBarsHtml}</div>` : '';
     } else {
-      const spanBarsHtml = daySpans
+      const spanBarsHtml = laneSlots
         .map((span) => {
+          if (!span) return '<div class="span-bar" style="visibility:hidden;"></div>';
           const seg = spanSegmentStyle(span, dateIso, colors);
           return `<div class="span-bar" style="background:${seg.background}; border-radius:${seg.radius};"></div>`;
         })
