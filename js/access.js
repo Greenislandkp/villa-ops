@@ -1,7 +1,7 @@
-// Résolution du contexte d'accès de l'utilisateur connecté.
-// Le cloisonnement par villa est appliqué côté serveur par les policies RLS
-// (voir brief, section "Sécurité") : ce module ne fait que relayer ce que
-// Supabase accepte déjà de renvoyer, il ne réimplémente pas la logique d'accès.
+// Resolves the access context of the logged-in user.
+// Villa-level access control is enforced server-side by RLS policies (see
+// brief, "Security" section): this module only relays what Supabase already
+// agrees to return, it does not reimplement the access logic.
 import { supabase } from './supabase-client.js';
 
 export async function loadCurrentTeamMember(userId) {
@@ -11,11 +11,11 @@ export async function loadCurrentTeamMember(userId) {
     .eq('id', userId)
     .maybeSingle();
   if (error) throw error;
-  return data; // null si le profil team_members n'a pas encore été créé par l'admin
+  return data; // null if the admin hasn't created a team_members profile yet
 }
 
 export async function loadAccessibleVillas() {
-  // RLS limite déjà le résultat aux villas accessibles par l'utilisateur connecté.
+  // RLS already limits the result to villas the logged-in user can access.
   const { data, error } = await supabase
     .from('villas')
     .select('*')

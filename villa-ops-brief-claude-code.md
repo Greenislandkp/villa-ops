@@ -111,7 +111,26 @@ gardant une seule entree dans le fil du journal.
    l'utilisateur connecte a acces (cf. Acces par utilisateur).
 2. Vue Calendrier : grille mensuelle par villa, barre de couleur par jour selon
    categorie(s) du jour, clic sur un jour affiche le detail (liste des entrees
-   de ce jour).
+   de ce jour). Comporte 2 modes, bascule via un petit toggle en haut de la
+   carte calendrier (pas un onglet separe dans la navigation) :
+   - "Vue complete" (mode par defaut) : comportement decrit ci-dessus, barre
+     de 70% de largeur, couleur = categorie.
+   - "Reservations" : n'affiche que les jours avec une reservation (source :
+     table `reservations` via `entries` de categorie Reservation). Barre plus
+     large (~88% au lieu de 70%, legerement plus epaisse) puisqu'il n'y a
+     qu'une seule info a montrer par jour. Couleur = couleur de la villa
+     concernee (`villas.color`), pas la couleur de categorie -- utile en vue
+     "Toutes les villas" pour voir en un coup d'oeil quelle propriete est
+     occupee tel jour. Si plusieurs villas sont reservees le meme jour en vue
+     "Toutes les villas", reprendre le style "split" (barre partagee en deux
+     couleurs) comme pour le mode complet. La legende sous le toggle change
+     en consequence (liste des villas + couleur, au lieu de la legende
+     categories). Le detail du jour selectionne, dans ce mode, ne montre que
+     les slots lies a une reservation (check-in/check-out/sejour en cours),
+     pas le menage ni la maintenance.
+   Reference d'implementation : voir villa-ops-mockup.html, toggle
+   ".cal-toggle" + classe ".resa-mode" sur ".cal-card" (deja prototype dans
+   la maquette).
 3. Creation rapide d'entree (bouton + flottant) : choix villa (limite aux
    villas accessibles), categorie (ou creation a la volee), titre, description
    optionnelle, assigne a, date, statut, photo optionnelle.

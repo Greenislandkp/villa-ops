@@ -187,6 +187,39 @@
   .cal-day .bar.maint{ width:70%; background: var(--clay); }
   .cal-day .bar.split{ width:70%; background: linear-gradient(90deg, var(--palm) 50%, var(--amber) 50%); }
 
+  /* toggle between the full activity calendar and the reservations-only calendar */
+  .cal-toggle{
+    display:flex; gap:4px;
+    background: rgba(22,35,31,0.06);
+    border-radius:10px;
+    padding:3px;
+    margin-bottom:14px;
+  }
+  .cal-toggle-btn{
+    flex:1; text-align:center;
+    padding:7px 0;
+    font-family: var(--font-body);
+    font-size:12px; font-weight:600;
+    color: rgba(22,35,31,0.5);
+    border-radius:7px;
+    cursor:pointer;
+  }
+  .cal-toggle-btn.active{ background: var(--ink); color: var(--paper-2); }
+
+  /* reservations-only bars: wider than the multi-category bars above, colored per villa */
+  .cal-day .bar-resa{
+    position:absolute; bottom:4px; left:50%; transform:translateX(-50%);
+    width:88%; height:6px; border-radius:4px;
+  }
+  .cal-legend-resa{
+    display:none; gap:14px; padding: 0 0 14px; flex-wrap:wrap;
+  }
+  .cal-card.resa-mode .bar-full{ display:none; }
+  .cal-card:not(.resa-mode) .bar-resa{ display:none; }
+  .cal-card.resa-mode .cal-legend-resa{ display:flex; }
+  .cal-card.resa-mode .day-detail .slot.full-only{ display:none; }
+  .cal-card:not(.resa-mode) .day-detail .slot.resa-only{ display:none; }
+
   .day-detail{
     margin-top: 22px;
   }
@@ -405,12 +438,23 @@
 
     <!-- CALENDAR VIEW -->
     <div id="calendar" class="view hidden">
-      <div class="cal-card">
+      <div class="cal-card" id="calCard">
+        <div class="cal-toggle">
+          <div class="cal-toggle-btn active" onclick="setCalMode('full', event)">Vue complète</div>
+          <div class="cal-toggle-btn" onclick="setCalMode('resa', event)">Réservations</div>
+        </div>
+
         <div class="cal-month">
           <span class="cal-nav">‹</span>
           <span>Août 2026</span>
           <span class="cal-nav">›</span>
         </div>
+
+        <div class="cal-legend-resa">
+          <div class="legend-item"><span class="dot" style="background:var(--palm)"></span>Villa Nour</div>
+          <div class="legend-item"><span class="dot" style="background:var(--amber)"></span>Breath of Paradise</div>
+        </div>
+
         <div class="cal-grid">
           <div class="cal-dow">L</div><div class="cal-dow">M</div><div class="cal-dow">M</div><div class="cal-dow">J</div><div class="cal-dow">V</div><div class="cal-dow">S</div><div class="cal-dow">D</div>
 
@@ -419,40 +463,44 @@
 
           <div class="cal-day">3</div><div class="cal-day">4</div><div class="cal-day">5</div><div class="cal-day">6</div><div class="cal-day">7</div><div class="cal-day">8</div><div class="cal-day">9</div>
 
-          <div class="cal-day">10<div class="bar clean"></div></div>
-          <div class="cal-day">11<div class="bar occ"></div></div>
-          <div class="cal-day today">12<div class="bar split"></div></div>
-          <div class="cal-day">13<div class="bar occ"></div></div>
-          <div class="cal-day">14<div class="bar occ"></div></div>
-          <div class="cal-day">15<div class="bar maint"></div></div>
-          <div class="cal-day">16<div class="bar occ"></div></div>
+          <div class="cal-day">10<div class="bar bar-full clean"></div></div>
+          <div class="cal-day">11<div class="bar bar-full occ"></div><div class="bar-resa" style="background:var(--palm)"></div></div>
+          <div class="cal-day today">12<div class="bar bar-full split"></div><div class="bar-resa" style="background:var(--palm)"></div></div>
+          <div class="cal-day">13<div class="bar bar-full occ"></div><div class="bar-resa" style="background:var(--palm)"></div></div>
+          <div class="cal-day">14<div class="bar bar-full occ"></div><div class="bar-resa" style="background:var(--palm)"></div></div>
+          <div class="cal-day">15<div class="bar bar-full maint"></div></div>
+          <div class="cal-day">16<div class="bar bar-full occ"></div><div class="bar-resa" style="background:var(--amber)"></div></div>
 
-          <div class="cal-day">17<div class="bar occ"></div></div>
-          <div class="cal-day">18<div class="bar occ"></div></div>
-          <div class="cal-day">19<div class="bar clean"></div></div>
+          <div class="cal-day">17<div class="bar bar-full occ"></div><div class="bar-resa" style="background:var(--amber)"></div></div>
+          <div class="cal-day">18<div class="bar bar-full occ"></div><div class="bar-resa" style="background:var(--amber)"></div></div>
+          <div class="cal-day">19<div class="bar bar-full clean"></div></div>
           <div class="cal-day">20</div>
           <div class="cal-day">21</div>
-          <div class="cal-day">22<div class="bar occ"></div></div>
-          <div class="cal-day">23<div class="bar occ"></div></div>
+          <div class="cal-day">22<div class="bar bar-full occ"></div><div class="bar-resa" style="background:var(--palm)"></div></div>
+          <div class="cal-day">23<div class="bar bar-full occ"></div><div class="bar-resa" style="background:var(--palm)"></div></div>
 
-          <div class="cal-day">24<div class="bar occ"></div></div>
-          <div class="cal-day">25<div class="bar clean"></div></div>
+          <div class="cal-day">24<div class="bar bar-full occ"></div><div class="bar-resa" style="background:var(--palm)"></div></div>
+          <div class="cal-day">25<div class="bar bar-full clean"></div></div>
           <div class="cal-day">26</div>
           <div class="cal-day">27</div>
-          <div class="cal-day">28<div class="bar maint"></div></div>
-          <div class="cal-day">29<div class="bar occ"></div></div>
-          <div class="cal-day">30<div class="bar occ"></div></div>
+          <div class="cal-day">28<div class="bar bar-full maint"></div></div>
+          <div class="cal-day">29<div class="bar bar-full occ"></div><div class="bar-resa" style="background:var(--amber)"></div></div>
+          <div class="cal-day">30<div class="bar bar-full occ"></div><div class="bar-resa" style="background:var(--amber)"></div></div>
         </div>
 
         <div class="day-detail">
           <h3>Aujourd'hui — 12 août</h3>
-          <div class="slot">
+          <div class="slot full-only">
             <span class="slot-time">08:40</span>
             <div class="slot-text"><b>Ménage terminé</b><span>Villa Nour · avant arrivée</span></div>
           </div>
           <div class="slot">
             <span class="slot-time">14:00</span>
             <div class="slot-text"><b>Check-in — famille Guerin</b><span>Breath of Paradise · 4 pers.</span></div>
+          </div>
+          <div class="slot resa-only">
+            <span class="slot-time">—</span>
+            <div class="slot-text"><b>Séjour en cours — Villa Nour</b><span>Jour 2 sur 4 · depart le 14 août</span></div>
           </div>
         </div>
       </div>
@@ -478,6 +526,12 @@ function showView(v){
   document.querySelectorAll('.nav-item').forEach((el,i)=>{
     el.classList.toggle('active', (v==='journal' && i===0) || (v==='calendar' && i===1));
   });
+}
+
+function setCalMode(mode, evt){
+  document.getElementById('calCard').classList.toggle('resa-mode', mode==='resa');
+  document.querySelectorAll('.cal-toggle-btn').forEach(b=>b.classList.remove('active'));
+  evt.target.classList.add('active');
 }
 </script>
 

@@ -86,7 +86,7 @@ export function memberInitials(member) {
 }
 
 export function statusLabel(status) {
-  return { a_faire: 'To do', en_cours: 'In progress', fait: 'Done' }[status] || status;
+  return { todo: 'To do', in_progress: 'In progress', done: 'Done' }[status] || status;
 }
 
 // Turning a hex color unreadable doesn't matter here : it's only ever used

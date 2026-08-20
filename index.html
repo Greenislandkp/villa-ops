@@ -85,11 +85,16 @@
     <!-- CALENDAR -->
     <div id="view-calendar" class="view hidden">
       <div class="cal-card">
+        <div class="cal-toggle" id="cal-toggle">
+          <button type="button" class="cal-toggle-btn active" data-mode="full">Full view</button>
+          <button type="button" class="cal-toggle-btn" data-mode="resa">Reservations</button>
+        </div>
         <div class="cal-month">
           <button class="cal-nav" id="cal-prev" type="button" aria-label="Previous month">‹</button>
           <span id="cal-month-label">—</span>
           <button class="cal-nav" id="cal-next" type="button" aria-label="Next month">›</button>
         </div>
+        <div class="cal-legend-resa" id="cal-legend-resa"></div>
         <div class="cal-grid" id="cal-grid"></div>
         <div class="day-detail" id="cal-day-detail"></div>
       </div>

@@ -22,7 +22,7 @@ const CHECKOUT_CATEGORY = { label: 'Checkout', color: '#8B5FBF' };
 
 let selectedVillaId = null;
 let selectedCategoryId = null;
-let selectedStatus = 'a_faire';
+let selectedStatus = 'todo';
 let newCategoryColor = CATEGORY_COLORS[0];
 let photoFile = null;
 let editingEntry = null;
@@ -55,11 +55,11 @@ export function openEntryForm(onDone, entry = null, reservation = null) {
   if (entry) {
     selectedVillaId = entry.villa_id;
     selectedCategoryId = entry.category_id;
-    selectedStatus = entry.status || 'a_faire';
+    selectedStatus = entry.status || 'todo';
   } else {
     selectedVillaId = state.selectedVillaId !== 'all' ? state.selectedVillaId : state.villas[0].id;
     selectedCategoryId = state.categories[0] ? state.categories[0].id : null;
-    selectedStatus = 'a_faire';
+    selectedStatus = 'todo';
   }
 
   renderSheet();
@@ -179,9 +179,9 @@ function renderSheet() {
         <div class="field${isReservation ? ' hidden' : ''}" id="status-field">
           <label>Status</label>
           <div class="chip-select" id="status-chips">
-            <button type="button" class="status-option a_faire${selectedStatus === 'a_faire' ? ' active a_faire' : ''}" data-status="a_faire">To do</button>
-            <button type="button" class="status-option en_cours${selectedStatus === 'en_cours' ? ' active en_cours' : ''}" data-status="en_cours">In progress</button>
-            <button type="button" class="status-option fait${selectedStatus === 'fait' ? ' active fait' : ''}" data-status="fait">Done</button>
+            <button type="button" class="status-option todo${selectedStatus === 'todo' ? ' active todo' : ''}" data-status="todo">To do</button>
+            <button type="button" class="status-option in_progress${selectedStatus === 'in_progress' ? ' active in_progress' : ''}" data-status="in_progress">In progress</button>
+            <button type="button" class="status-option done${selectedStatus === 'done' ? ' active done' : ''}" data-status="done">Done</button>
           </div>
         </div>
 
@@ -387,7 +387,7 @@ async function syncAuxTask({ reservationEntry, isEdit, categoryDef, titlePrefix,
       category_id: cat.id,
       description: null,
       author_id: state.currentTeamMember.id,
-      status: 'a_faire',
+      status: 'todo',
       check_out_time: null,
       photo_url: null,
       related_entry_id: reservationEntry.id,
@@ -477,7 +477,7 @@ async function submitEntry(onDone) {
       title,
       description: isStandard ? (document.getElementById('entry-desc').value.trim() || null) : null,
       assigned_to_id: document.getElementById('entry-assignee').value || null,
-      status: isReservation ? 'fait' : selectedStatus,
+      status: isReservation ? 'done' : selectedStatus,
       event_date: eventDate,
       check_in_time: checkInTime,
       check_out_time: checkOutTime,

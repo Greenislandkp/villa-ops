@@ -83,9 +83,9 @@ function renderDetail(entry, reservation, photoUrl, onChanged) {
       <div class="field${isReservation ? ' hidden' : ''}">
         <label>Status</label>
         <div class="chip-select" id="detail-status-chips">
-          <button type="button" class="status-option a_faire${entry.status === 'a_faire' ? ' active a_faire' : ''}" data-status="a_faire">To do</button>
-          <button type="button" class="status-option en_cours${entry.status === 'en_cours' ? ' active en_cours' : ''}" data-status="en_cours">In progress</button>
-          <button type="button" class="status-option fait${entry.status === 'fait' ? ' active fait' : ''}" data-status="fait">Done</button>
+          <button type="button" class="status-option todo${entry.status === 'todo' ? ' active todo' : ''}" data-status="todo">To do</button>
+          <button type="button" class="status-option in_progress${entry.status === 'in_progress' ? ' active in_progress' : ''}" data-status="in_progress">In progress</button>
+          <button type="button" class="status-option done${entry.status === 'done' ? ' active done' : ''}" data-status="done">Done</button>
         </div>
       </div>
       <div class="form-error" id="detail-error"></div>

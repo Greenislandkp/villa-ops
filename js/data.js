@@ -49,7 +49,7 @@ export async function fetchTaskEntries({ villaId, excludeCategoryId, sortBy = 'd
   let q = supabase
     .from('entries')
     .select(ENTRY_COLUMNS)
-    .in('status', ['a_faire', 'en_cours'])
+    .in('status', ['todo', 'in_progress'])
     .limit(limit);
   if (villaId && villaId !== 'all') q = q.eq('villa_id', villaId);
   if (excludeCategoryId) q = q.neq('category_id', excludeCategoryId);
@@ -90,10 +90,10 @@ export async function fetchEntriesForMonth({ villaId, startIso, endIso, excludeC
   return data || [];
 }
 
-// Réservations dont le séjour peut chevaucher la période visible : on part
-// large (jusqu'à `maxStayDays` avant le début de la période) puisque
-// check_out_date vit sur `reservations`, pas sur `entries` — impossible de
-// filtrer précisément côté serveur sans embedding.
+// Reservations whose stay might overlap the visible range: cast a wide net
+// (up to `maxStayDays` before the range start) since check_out_date lives
+// on `reservations`, not on `entries` — can't filter precisely server-side
+// without embedding.
 export async function fetchReservationEntriesNear({ villaId, categoryId, rangeStart, rangeEnd, maxStayDays = 60 }) {
   const earliest = new Date(rangeStart);
   earliest.setDate(earliest.getDate() - maxStayDays);
@@ -230,9 +230,9 @@ export async function uploadEntryPhoto(villaId, entryId, file) {
   return path;
 }
 
-// Suppression complète d'une entrée : réservation associée puis photo en
-// storage (best-effort) puis la ligne entries elle-même. Réservé aux
-// membres full_access côté UI (entry-detail.js) — non appliqué ici.
+// Full deletion of an entry: its linked reservation, then its photo in
+// storage (best-effort), then the entries row itself. Restricted to
+// full_access members at the UI level (entry-detail.js) — not enforced here.
 export async function deleteEntry(entry) {
   await supabase.from('reservations').delete().eq('entry_id', entry.id);
   await supabase.from('entries').delete().eq('related_entry_id', entry.id); // linked Checkout task, if any
@@ -240,7 +240,7 @@ export async function deleteEntry(entry) {
     try {
       await supabase.storage.from(ENTRY_PHOTOS_BUCKET).remove([entry.photo_url]);
     } catch (_) {
-      /* best effort : ne bloque pas la suppression de l'entrée */
+      /* best effort: doesn't block deleting the entry */
     }
   }
   const { error } = await supabase.from('entries').delete().eq('id', entry.id);

@@ -23,7 +23,7 @@ export async function renderVillas() {
     const cards = state.villas.map((villa) => {
       const villaEntries = byVilla.get(villa.id) || [];
       const openCount = villaEntries.filter(
-        (e) => (e.status === 'a_faire' || e.status === 'en_cours') && (!reservationCat || e.category_id !== reservationCat.id)
+        (e) => (e.status === 'todo' || e.status === 'in_progress') && (!reservationCat || e.category_id !== reservationCat.id)
       ).length;
       const last = villaEntries[0]; // already sorted by created_at desc
       const color = hexOrFallback(villa.color, '#C99A3D');

@@ -9,6 +9,7 @@ let selectedDate = isoDate(today);
 let monthEntries = []; // non-reservation entries, single-day
 let staySpans = []; // reservation stays: { entry, reservation, arrival, departure }
 let wired = false;
+let calMode = 'full'; // 'full' (everything) or 'resa' (reservations only, colored by villa)
 
 function wireNav() {
   if (wired) return;
@@ -22,6 +23,15 @@ function wireNav() {
     viewMonth += 1;
     if (viewMonth > 11) { viewMonth = 0; viewYear += 1; }
     loadAndRender();
+  });
+  document.querySelectorAll('#cal-toggle .cal-toggle-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.mode === calMode) return;
+      calMode = btn.dataset.mode;
+      document.querySelectorAll('#cal-toggle .cal-toggle-btn').forEach((b) => b.classList.toggle('active', b === btn));
+      renderGrid();
+      renderDayDetail();
+    });
   });
 }
 
@@ -110,9 +120,35 @@ function spanSegmentStyle(span, dateIso, colors) {
   return { background: colors.stay, radius: '0' };
 }
 
+// Reservations-mode bars: solid villa color for the whole stay (no
+// check-in/check-out color split — the villa color is what matters here),
+// thicker than the full-view bars since it's the only marker shown per day.
+function villaSpanSegmentStyle(span, dateIso) {
+  const villa = state.villasById.get(span.entry.villa_id);
+  const color = hexOrFallback(villa && villa.color, '#8B9A93');
+  const isStart = dateIso === span.arrival;
+  const isEnd = dateIso === span.departure;
+  let radius = '0';
+  if (isStart && isEnd) radius = '2px';
+  else if (isStart) radius = '2px 0 0 2px';
+  else if (isEnd) radius = '0 2px 2px 0';
+  return { background: color, radius };
+}
+
+function renderResaLegend() {
+  const box = document.getElementById('cal-legend-resa');
+  if (!box) return;
+  box.classList.toggle('active', calMode === 'resa');
+  if (calMode !== 'resa') { box.innerHTML = ''; return; }
+  box.innerHTML = state.villas
+    .map((v) => `<div class="legend-item"><span class="dot" style="background:${hexOrFallback(v.color, '#8B9A93')}"></span>${escapeHtml(v.name)}</div>`)
+    .join('');
+}
+
 function renderGrid() {
   const grid = document.getElementById('cal-grid');
   document.getElementById('cal-month-label').textContent = formatMonthLabel(viewYear, viewMonth);
+  renderResaLegend();
 
   const { startIso, endIso } = monthBounds(viewYear, viewMonth);
   const byDate = entriesByDate();
@@ -138,19 +174,32 @@ function renderGrid() {
     const dayEntries = byDate.get(dateIso) || [];
     const daySpans = (bySpanDate.get(dateIso) || []).slice(0, 5); // cap simultaneous stays (max villa count)
 
-    const spanBarsHtml = daySpans
-      .map((span) => {
-        const seg = spanSegmentStyle(span, dateIso, colors);
-        return `<div class="span-bar" style="background:${seg.background}; border-radius:${seg.radius};"></div>`;
-      })
-      .join('');
+    let dayBarsHtml = '';
+    if (calMode === 'resa') {
+      // Reservations only: one thicker, villa-colored bar per active stay,
+      // nothing else on the day cell.
+      const spanBarsHtml = daySpans
+        .map((span) => {
+          const seg = villaSpanSegmentStyle(span, dateIso);
+          return `<div class="span-bar wide" style="background:${seg.background}; border-radius:${seg.radius};"></div>`;
+        })
+        .join('');
+      dayBarsHtml = spanBarsHtml ? `<div class="day-bars resa">${spanBarsHtml}</div>` : '';
+    } else {
+      const spanBarsHtml = daySpans
+        .map((span) => {
+          const seg = spanSegmentStyle(span, dateIso, colors);
+          return `<div class="span-bar" style="background:${seg.background}; border-radius:${seg.radius};"></div>`;
+        })
+        .join('');
 
-    const entryColors = [...new Set(dayEntries.map((e) => hexOrFallback(state.categoriesById.get(e.category_id)?.color)))].slice(0, 4);
-    const entryBarsHtml = entryColors.length
-      ? `<div class="bars">${entryColors.map((c) => `<div class="bar" style="background:${c}"></div>`).join('')}</div>`
-      : '';
+      const entryColors = [...new Set(dayEntries.map((e) => hexOrFallback(state.categoriesById.get(e.category_id)?.color)))].slice(0, 4);
+      const entryBarsHtml = entryColors.length
+        ? `<div class="bars">${entryColors.map((c) => `<div class="bar" style="background:${c}"></div>`).join('')}</div>`
+        : '';
 
-    const dayBarsHtml = spanBarsHtml || entryBarsHtml ? `<div class="day-bars">${spanBarsHtml}${entryBarsHtml}</div>` : '';
+      dayBarsHtml = spanBarsHtml || entryBarsHtml ? `<div class="day-bars">${spanBarsHtml}${entryBarsHtml}</div>` : '';
+    }
 
     const classes = ['cal-day', 'clickable'];
     if (dateIso === todayIsoStr) classes.push('today');
@@ -187,14 +236,17 @@ function renderDayDetail() {
   const byDate = entriesByDate();
   const bySpanDate = spansByDate(startIso, endIso);
 
-  const dayEntries = (byDate.get(selectedDate) || []).slice();
+  // Reservations mode only ever shows stay slots — other entry types
+  // (cleaning, maintenance, notes...) stay out of this view entirely.
+  const dayEntries = calMode === 'resa' ? [] : (byDate.get(selectedDate) || []).slice();
   const daySpans = (bySpanDate.get(selectedDate) || []).slice();
 
   const isToday = selectedDate === isoDate(new Date());
   const heading = isToday ? 'Today' : formatDateLong(selectedDate);
 
   if (!dayEntries.length && !daySpans.length) {
-    box.innerHTML = `<h3>${escapeHtml(heading)}</h3><div class="empty-state" style="padding:20px 4px;">Nothing planned that day.</div>`;
+    const emptyMsg = calMode === 'resa' ? 'No reservation that day.' : 'Nothing planned that day.';
+    box.innerHTML = `<h3>${escapeHtml(heading)}</h3><div class="empty-state" style="padding:20px 4px;">${emptyMsg}</div>`;
     return;
   }
 
