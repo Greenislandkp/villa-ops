@@ -232,16 +232,25 @@ function renderGrid() {
 
   const todayIsoStr = isoDate(new Date());
   const colors = stayColors();
-  // Fixed number of stacking rows for the whole grid, so a stay's bar sits
-  // at the same lane (same visual row) on every day of its duration —
-  // never shifting just because some other stay started or ended nearby.
-  const maxLanes = Math.min(staySpans.length ? Math.max(...staySpans.map((s) => s.lane)) + 1 : 0, 5);
+  // Lanes are assigned globally (so a stay never changes row once picked),
+  // but a lane only costs vertical space on days that actually need it —
+  // compact to the lanes truly used within *this visible month* so an
+  // overlap elsewhere in the loaded range (lookback window for spans that
+  // started earlier) doesn't pad every day's height with empty rows.
+  const usedLanes = new Set();
+  bySpanDate.forEach((list) => list.forEach((s) => usedLanes.add(s.lane)));
+  const sortedLanes = [...usedLanes].sort((a, b) => a - b).slice(0, 5);
+  const laneCompact = new Map(sortedLanes.map((lane, i) => [lane, i]));
+  const maxLanes = sortedLanes.length;
 
   for (let day = 1; day <= daysInMonth; day++) {
     const dateIso = isoDate(new Date(viewYear, viewMonth, day));
     const dayEntries = byDate.get(dateIso) || [];
     const daySpansActive = bySpanDate.get(dateIso) || [];
-    const laneMap = new Map(daySpansActive.map((s) => [s.lane, s]));
+    const laneMap = new Map();
+    daySpansActive.forEach((s) => {
+      if (laneCompact.has(s.lane)) laneMap.set(laneCompact.get(s.lane), s);
+    });
     const laneSlots = [];
     for (let lane = 0; lane < maxLanes; lane++) laneSlots.push(laneMap.get(lane) || null);
 
