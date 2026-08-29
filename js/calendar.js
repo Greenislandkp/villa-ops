@@ -156,22 +156,9 @@ function villaSpanSegmentStyle(span, dateIso) {
   return { background: color, radius };
 }
 
-function renderResaLegend() {
-  const box = document.getElementById('cal-legend-resa');
-  if (!box) return;
-  box.classList.toggle('active', calMode === 'resa');
-  if (calMode !== 'resa') { box.innerHTML = ''; return; }
-  const shownIds = new Set(state.selectedVillaIds);
-  box.innerHTML = state.villas
-    .filter((v) => shownIds.has(v.id))
-    .map((v) => `<div class="legend-item"><span class="dot" style="background:${hexOrFallback(v.color, '#8B9A93')}"></span>${escapeHtml(v.name)}</div>`)
-    .join('');
-}
-
 function renderGrid() {
   const grid = document.getElementById('cal-grid');
   document.getElementById('cal-month-label').textContent = formatMonthLabel(viewYear, viewMonth);
-  renderResaLegend();
 
   const { startIso, endIso } = monthBounds(viewYear, viewMonth);
   const byDate = entriesByDate();
