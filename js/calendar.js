@@ -144,6 +144,8 @@ function renderGrid() {
   }
 
   const todayIsoStr = isoDate(new Date());
+  const checkinColor = hexOrFallback(getCategoryByLabel('Check-in') && getCategoryByLabel('Check-in').color, '#3AA6A0');
+  const checkoutColor = hexOrFallback(getCategoryByLabel('Checkout') && getCategoryByLabel('Checkout').color, '#8B5FBF');
   // Lanes are assigned globally (so a stay never changes row once picked),
   // but a lane only costs vertical space on days that actually need it —
   // compact to the lanes truly used within *this visible month* so an
@@ -180,9 +182,12 @@ function renderGrid() {
     if (calMode === 'resa') {
       dayBarsHtml = spanBarsHtml ? `<div class="day-bars resa">${spanBarsHtml}</div>` : '';
     } else {
-      const entryColors = [...new Set(dayEntries.map((e) => hexOrFallback(state.categoriesById.get(e.category_id)?.color)))].slice(0, 6);
-      const entryBarsHtml = entryColors.length
-        ? `<div class="entry-dots">${entryColors.map((c) => `<div class="entry-dot" style="background:${c}"></div>`).join('')}</div>`
+      const entryColors = [...new Set(dayEntries.map((e) => hexOrFallback(state.categoriesById.get(e.category_id)?.color)))];
+      if (daySpansActive.some((s) => s.arrival === dateIso)) entryColors.push(checkinColor);
+      if (daySpansActive.some((s) => s.departure === dateIso)) entryColors.push(checkoutColor);
+      const entryColorsCapped = [...new Set(entryColors)].slice(0, 6);
+      const entryBarsHtml = entryColorsCapped.length
+        ? `<div class="entry-dots">${entryColorsCapped.map((c) => `<div class="entry-dot" style="background:${c}"></div>`).join('')}</div>`
         : '';
 
       dayBarsHtml = spanBarsHtml || entryBarsHtml ? `<div class="day-bars">${spanBarsHtml}${entryBarsHtml}</div>` : '';
