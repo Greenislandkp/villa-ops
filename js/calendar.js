@@ -107,43 +107,9 @@ function assignLanes(spans) {
   });
 }
 
-// Resolve the Check-in / Reservation / Checkout category colors once, with
-// sane fallbacks in case one of the auto-provisioned categories is missing.
-function stayColors() {
-  const reservationCat = getReservationCategory();
-  const checkinCat = getCategoryByLabel('Check-in');
-  const checkoutCat = getCategoryByLabel('Checkout');
-  return {
-    stay: hexOrFallback(reservationCat && reservationCat.color, '#3E7C59'),
-    checkin: hexOrFallback(checkinCat && checkinCat.color, '#3AA6A0'),
-    checkout: hexOrFallback(checkoutCat && checkoutCat.color, '#8B5FBF'),
-  };
-}
-
-// One continuous bar per stay, spanning arrival -> departure within a
-// week row. The reservation green never breaks: on the check-in day the
-// guest only holds the room half the day, so that day is half teal/half
-// green (green touching the next day's bar); check-out mirrors that
-// with half green/half purple. Middle "staying" days are plain green,
-// square-edged so they connect seamlessly to their neighbours.
-function spanSegmentStyle(span, dateIso, colors) {
-  const isStart = dateIso === span.arrival;
-  const isEnd = dateIso === span.departure;
-  if (isStart && isEnd) {
-    return { background: `linear-gradient(90deg, ${colors.checkin} 50%, ${colors.checkout} 50%)`, radius: '2px' };
-  }
-  if (isStart) {
-    return { background: `linear-gradient(90deg, ${colors.checkin} 50%, ${colors.stay} 50%)`, radius: '2px 0 0 2px' };
-  }
-  if (isEnd) {
-    return { background: `linear-gradient(90deg, ${colors.stay} 50%, ${colors.checkout} 50%)`, radius: '0 2px 2px 0' };
-  }
-  return { background: colors.stay, radius: '0' };
-}
-
-// Reservations-mode bars: solid villa color for the whole stay instead of
-// the full-view's check-in/check-out color split (same thickness as the
-// full view now, just a different color scheme).
+// Every stay bar (both calendar modes) uses the villa's own color for its
+// whole duration — consistent with the Reservations mode, and lets "All
+// villas" readers tell properties apart at a glance in either view.
 function villaSpanSegmentStyle(span, dateIso) {
   const villa = state.villasById.get(span.entry.villa_id);
   const color = hexOrFallback(villa && villa.color, '#8B9A93');
@@ -178,7 +144,6 @@ function renderGrid() {
   }
 
   const todayIsoStr = isoDate(new Date());
-  const colors = stayColors();
   // Lanes are assigned globally (so a stay never changes row once picked),
   // but a lane only costs vertical space on days that actually need it —
   // compact to the lanes truly used within *this visible month* so an
@@ -201,27 +166,20 @@ function renderGrid() {
     const laneSlots = [];
     for (let lane = 0; lane < maxLanes; lane++) laneSlots.push(laneMap.get(lane) || null);
 
+    // Stay bars are villa-colored in both modes now — only the day-bars
+    // wrapper and the extra per-category dots (full view only) differ.
+    const spanBarsHtml = laneSlots
+      .map((span) => {
+        if (!span) return '<div class="span-bar" style="visibility:hidden;"></div>';
+        const seg = villaSpanSegmentStyle(span, dateIso);
+        return `<div class="span-bar" style="background:${seg.background}; border-radius:${seg.radius};"></div>`;
+      })
+      .join('');
+
     let dayBarsHtml = '';
     if (calMode === 'resa') {
-      // Reservations only: one villa-colored bar per active stay, nothing
-      // else on the day cell.
-      const spanBarsHtml = laneSlots
-        .map((span) => {
-          if (!span) return '<div class="span-bar" style="visibility:hidden;"></div>';
-          const seg = villaSpanSegmentStyle(span, dateIso);
-          return `<div class="span-bar" style="background:${seg.background}; border-radius:${seg.radius};"></div>`;
-        })
-        .join('');
       dayBarsHtml = spanBarsHtml ? `<div class="day-bars resa">${spanBarsHtml}</div>` : '';
     } else {
-      const spanBarsHtml = laneSlots
-        .map((span) => {
-          if (!span) return '<div class="span-bar" style="visibility:hidden;"></div>';
-          const seg = spanSegmentStyle(span, dateIso, colors);
-          return `<div class="span-bar" style="background:${seg.background}; border-radius:${seg.radius};"></div>`;
-        })
-        .join('');
-
       const entryColors = [...new Set(dayEntries.map((e) => hexOrFallback(state.categoriesById.get(e.category_id)?.color)))].slice(0, 6);
       const entryBarsHtml = entryColors.length
         ? `<div class="entry-dots">${entryColors.map((c) => `<div class="entry-dot" style="background:${c}"></div>`).join('')}</div>`

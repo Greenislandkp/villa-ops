@@ -12,7 +12,7 @@ import { openEntryDetail } from './entry-detail.js';
 import { subscribeEntries, unsubscribeEntries } from './realtime.js';
 import { markSheetOpened, syncSheetFlag } from './nav-history.js';
 import { isPushSupported, getCurrentSubscription, subscribeToPush, unsubscribeFromPush } from './push.js';
-import { escapeHtml, showToast, hexOrFallback } from './utils.js';
+import { escapeHtml, showToast, hexOrFallback, isReservationCategory } from './utils.js';
 
 const VIEW_TITLES = {
   journal: 'Journal',
@@ -160,7 +160,10 @@ function wireVillaSwitchClicks() {
 
 function renderLegend() {
   const box = document.getElementById('legend');
+  // Reservation stays are villa-colored on the calendar now, not a fixed
+  // category color, so listing it here would no longer match what's shown.
   box.innerHTML = state.categories
+    .filter((c) => !isReservationCategory(c))
     .map((c) => `<div class="legend-item"><span class="dot" style="background:${c.color || '#8B9A93'}"></span>${escapeHtml(c.label)}</div>`)
     .join('');
 }
